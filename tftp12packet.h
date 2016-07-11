@@ -1,7 +1,7 @@
 #ifndef _TFTP12PACKET_H_
 #define _TFTP12PACKET_H_
 
-
+#include "windows.h"
 
 
 

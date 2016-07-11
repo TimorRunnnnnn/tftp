@@ -8,6 +8,7 @@
 #include "time.h"
 
 #include "tftpclient.h"
+#include "tftp12packet.h"
 #include "tftp.h"
 
 int main()
