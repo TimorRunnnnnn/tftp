@@ -2,13 +2,14 @@
 #define _TFTP_H_
 
 #include "windows.h"
+#include "stdio.h"
+#include "stdlib.h"
 
 #define TFTP12_BLOCKSIZE_MAX		(8192*2)
 #define TFTP12_BLOCKSIZE_MIN		(512)
 
 #define TFTP12_TIMEOUT_MAX		(256)
 #define TFTP12_TIMEOUT_MIN		(1)
-
 
 enum TFTP12_TRANS_MODE
 {
@@ -64,11 +65,12 @@ typedef struct
 	INT32 transmitBytes;	//已经接收/发送的字节数
 	struct sockaddr_in peerAddr;		//对端地址
 	INT8 *buffer;	//接收和发送共用缓冲区
-}TFTP12Description;
+	INT32 buffersize;
+}TFTP12Description_t;
 
 typedef struct _tftp12node
 {
-	TFTP12Description clientInfo;
+	TFTP12Description_t clientInfo;
 	struct _tftp12node *next;
 }TFTP12ClientNode;
 

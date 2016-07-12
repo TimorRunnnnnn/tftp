@@ -29,8 +29,8 @@ int main()
 		EXIT();
 	}
 
+
 	test();
-	tftp12BuildPacket(TFTP12_READ_REQUEST, "asdfasdf");
 
 	char input[10];
 	while (1)
