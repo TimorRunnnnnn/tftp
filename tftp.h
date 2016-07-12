@@ -3,20 +3,20 @@
 
 #include "windows.h"
 
-#define TFTP12_BLOCKSIZE_MAX		(8192)
+#define TFTP12_BLOCKSIZE_MAX		(8192*2)
 #define TFTP12_BLOCKSIZE_MIN		(512)
 
-#define TFTP12_TIMEOUT_MAX		(99)
+#define TFTP12_TIMEOUT_MAX		(256)
 #define TFTP12_TIMEOUT_MIN		(1)
 
 
-enum TFTP_TRANS_MODE
+enum TFTP12_TRANS_MODE
 {
-	TFTP12_NETASCII=0,
+	TFTP12_NETASCII = 0,
 	TFTP12_OCTET,
 };
 
-enum TFTP_OPCODE
+enum TFTP12_OPCODE
 {
 	TFTP12_READ_REQUEST = 1,
 	TFTP12_WRITE_REQUEST,
@@ -24,7 +24,7 @@ enum TFTP_OPCODE
 	TFTP12_ACKNOWLEDGMENT,
 	TFTP12_TFTP_ERROR,
 };
-enum TFTP_ERROR_CODE
+enum TFTP12_ERROR_CODE
 {
 	TFTP12_NOT_DEFINED = 0,
 	TFTP12_FILE_NOT_FOUND,
@@ -36,43 +36,48 @@ enum TFTP_ERROR_CODE
 	TFTP12_NO_SUCH_USER,
 };
 
-
-typedef struct 
+enum TFTP12_SEND_RECV_STAUTS
 {
-	char hostIP[16];
-	char *sourceFilename;
-	char *destFilename;
-	INT32 transMode;
-	INT32 blksize;
+	TFTP12_OK = 0,
+	TFTP12_TIMEOUT,
+	TFTP12_SELECT_ERROR,
+	TFTP12_SEND_FAILED,
+};
+
+typedef struct
+{
+	INT32 blockSize;
 	INT32 timeout;
 	INT32 tsize;
-}TFTP12Request_t;
+}TFTP12Option;
 
-// typedef struct
-// {
-// 	INT16 opcode;
-// 	INT16 blockNum;
-// }TFTPAck_t;
-// 
-// typedef struct
-// {
-// 	INT16 opcode;
-// 	char *option;
-// }TFTPOAck_t;
-// 
-// typedef struct 
-// {
-// 
-// };
 
-// typedef struct _tftpRequestPacket
-// {
-// 	INT16 opcode;
-// 	char *filename;
-// 	char *mode;
-// 	char *option;
-// }TFTPRequestPacket_t;
+typedef struct
+{
+	INT16 opCode;
+	INT8 *filename;	//目的文件名
+	FILE *openFile;	//打开的文件
+	INT8 *mode;	//netascii/octet/mail
+	TFTP12Option option;
+	INT32 localPort;	//本地出端口
+	INT32 sock;
+	INT32 transmitBytes;	//已经接收/发送的字节数
+	struct sockaddr_in peerAddr;		//对端地址
+	INT8 *buffer;	//接收和发送共用缓冲区
+}TFTP12Description;
 
+typedef struct _tftp12node
+{
+	TFTP12Description clientInfo;
+	struct _tftp12node *next;
+}TFTP12ClientNode;
+
+
+typedef struct
+{
+	INT32 count;
+	TFTP12ClientNode clientNode;
+} TFTP12ClientInfoList;
 
 
 INT32 test();

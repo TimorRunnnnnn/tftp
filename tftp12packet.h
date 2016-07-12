@@ -10,8 +10,4 @@
 char *tftp12BuildPacket(INT32 opcode, ...);
 
 
-
-
-
-
 #endif
