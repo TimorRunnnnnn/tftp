@@ -15,9 +15,9 @@ const INT32 tranModeStrLen[2] = {8,5};
 // }
 
 
-
 INT32 tftpReadFrom(FILE *file, TFTP12Description_t *request)
 {
+
 // 	if (/*file==NULL||*/request==NULL||request->destFilename==NULL||request->sourceFilename==NULL)
 // 	{
 // 		return FALSE;
@@ -88,9 +88,6 @@ INT32 tftpReadFrom(FILE *file, TFTP12Description_t *request)
 // 	destAddr.sin_addr.S_un.S_addr=inet_addr(request->hostIP);
 // 	destAddr.sin_family = AF_INET;
 // 	destAddr.sin_port = TFTP_PORT;
-
-	
-
 	return TRUE;
 }
 
@@ -111,14 +108,10 @@ INT32 test()
 	testDesc.mode = "ocete";
 	tftp12CreateRequestPkt(&testDesc);
 
-// 
-// 	tftp12StrToNum("123456");
-// 	tftp12StrToNum("123456.1");
-// 	tftp12StrToNum("12342x");
 
-	tftp12ExtractOption("timeout\0123\0blksize\01234\0tsize\0111\0", &testDesc.option);
-	tftp12ExtractOption("timeout\0123\0blksize\01x34\0tsize\0111\0", &testDesc.option);
-	tftp12ExtractOption("blksize\01234\0timeout\0123\0tsize\0111\0", &testDesc.option);
+	tftp12ExtractOption(testDesc.sendBuffer,512, &testDesc.option);
+// 	tftp12ExtractOption("timeout\0123\0blksize\01x34\0tsize\0111\0", &testDesc.option);
+// 	tftp12ExtractOption("blksize\01234\0timeout\0123\0tsize\0111\0", &testDesc.option);
 	return 1;
 }
 

@@ -6,7 +6,7 @@
 #include "stdlib.h"
 
 /*协商过程报文最大长度*/
-#define TFTP12_NEG_PACKET_MAX_SIZE	(512)
+#define TFTP12_CONTROL_PACKET_MAX_SIZE	(512)
 
 #define TFTP12_BLOCKSIZE_MAX		(8192*2)
 #define TFTP12_BLOCKSIZE_MIN		(512)
@@ -63,7 +63,7 @@ typedef struct
 {
 	INT16 writeOrRead;
 	INT8 *filename;	//目的文件名
-	FILE *openFile;	//打开的文件
+	FILE openFile;	//打开的文件
 	INT8 *mode;	//netascii/octet/mail
 	TFTP12Option option;
 	INT32 localPort;	//本地出端口
@@ -71,8 +71,8 @@ typedef struct
 	INT32 transmitBytes;	//已经接收/发送的字节数
 	struct sockaddr_in peerAddr;		//对端地址
 	INT8 *recvBuffer;	//接收和发送共用缓冲区
-	INT8 sendBuffer[TFTP12_NEG_PACKET_MAX_SIZE];
-	INT32 buffersize;
+	INT32 recvBytes;
+	INT8 sendBuffer[TFTP12_CONTROL_PACKET_MAX_SIZE];
 }TFTP12Description_t;
 
 typedef struct _tftp12node

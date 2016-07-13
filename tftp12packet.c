@@ -27,7 +27,7 @@ static inline INT32 tftp12IntPow(INT32 x, INT32 y) {
 	return ret;
 }
 
-static inline INT32 tftp12StrToNum( char *buf)
+static inline INT32 tftp12StrToNum(char *buf)
 {
 	INT32 cnt = 0;
 	char *pBuffer = buf;
@@ -60,25 +60,31 @@ static inline INT32 tftp12StrToNum( char *buf)
 	return num;
 }
 
-INT32 tftp12ExtractOption(char *buffer, TFTP12Option *option)
+static inline tftp12StrReplace(char *buf, INT32 len) 
 {
-	//char num[11];/*INT32最长为10位数*/
+
+	for (INT32 i = 0; i < (len-1); i++)
+	{
+		if (buf[i] == '\0')
+		{
+			/*随便替换为一个其他字符*/
+			buf[i] = 1;
+		}
+	}
+}
+
+
+INT32 tftp12ExtractOption(char *buffer, INT32 len, TFTP12Option *option)
+{
 	char *position = NULL;
-
-	// 	position = strstr(buffer, STR_BLKSIZE);
-	// 	if (position == NULL)
-	// 	{
-	// 		return ERROR;
-	// 	}
-	// 	position++;/*跳过'\0'*/
-
 	INT32 num = 0;
+	tftp12StrReplace(buffer, len);
 	for (INT32 i = 0; i < TFTP12_NUMBER_OF_OPTIONS; i++)
 	{
 		position = strstr(buffer, tftp12ConstStrOption[i]);
 		if (position == NULL)
 		{
-			return ERROR;
+			continue;
 		}
 		position++;
 		num = tftp12StrToNum(position);
@@ -112,7 +118,7 @@ INT32 tftp12CreateRequestPkt(TFTP12Description_t *desc)
 		return ERROR;
 	}
 
-	memset(desc->sendBuffer, '\0', TFTP12_NEG_PACKET_MAX_SIZE);
+	memset(desc->sendBuffer, '\0', TFTP12_CONTROL_PACKET_MAX_SIZE);
 
 	char *pWalk = desc->sendBuffer;
 	*pWalk = 0;
