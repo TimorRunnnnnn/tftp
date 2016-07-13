@@ -100,15 +100,25 @@ INT32 test()
 
 
 	memset(&testDesc, 0, sizeof(testDesc));
+	
 	testDesc.option.blockSize = 8192;
 	testDesc.option.timeout = 10;
 	testDesc.option.tsize = 10000;
-	char testbuffer[10000];
-	testDesc.buffer = testbuffer;
 	testDesc.filename = "testfilename";
-	testDesc.opCode = TFTP12_READ_REQUEST;
+	testDesc.recvBuffer = malloc(TFTP12_BUFFER_SIZE(&testDesc));
+	testDesc.writeOrRead = TFTP12_OPCODE_READ_REQUEST;
 	testDesc.openFile = 123;
 	testDesc.mode = "ocete";
 	tftp12CreateRequestPkt(&testDesc);
+
+// 
+// 	tftp12StrToNum("123456");
+// 	tftp12StrToNum("123456.1");
+// 	tftp12StrToNum("12342x");
+
+	tftp12ExtractOption("timeout\0123\0blksize\01234\0tsize\0111\0", &testDesc.option);
+	tftp12ExtractOption("timeout\0123\0blksize\01x34\0tsize\0111\0", &testDesc.option);
+	tftp12ExtractOption("blksize\01234\0timeout\0123\0tsize\0111\0", &testDesc.option);
+	return 1;
 }
 

@@ -8,6 +8,5 @@
 
 
 INT32 tftp12CreateRequestPkt(TFTP12Description_t *desc);
-
-
+INT32 tftp12ExtractOption(char *buffer, TFTP12Option *option);
 #endif
