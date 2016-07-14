@@ -125,12 +125,16 @@ INT32 test()
 	FILE *tFile = fopen("test.txt", "r");
 
 // 	char *rea = malloc(5000000);
-// 	INT32 x = fread(rea, 1, 5000000, tFile);
-// 	for (INT32 i=0;i<x;i++)
+// 	INT32 x = 1000000;
+// 	for (INT32 i=0;i<x/2000;i++)
 // 	{
-// 		if (rea[i]!='1')
+// 		fread(&rea[i*2000], 1, 2000, tFile);
+// 		for (int j = 0; j < 2000;j++)
 // 		{
-// 			printf("error");
+// 			if (rea[i] != '1')
+// 			{
+// 				printf("error");
+// 			}
 // 		}
 // 	}
 
@@ -166,7 +170,7 @@ INT32 test()
 // // 						//break;
 // // 					}
 // 				}
-				tftp12WriteNextBlock(2, tem, rsize);
+				//tftp12WriteNextBlock(2, tem, rsize);
 				for (INT32 i = 0; i < rsize; i++)
 				{
 					*(tem + i) = 0;

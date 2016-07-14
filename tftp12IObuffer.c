@@ -196,13 +196,13 @@ INT32 tftp12WriteNextBlock(INT32 id, char *buf, INT32 writeSize)
 				tftp12WaitIOFinish(node);
 				node->IOtaskIsRunning = TRUE;
 			}
-			for (INT32 i = 0; i < node->bufferSize; i++)
-			{
-				if (*(node->currentWriteBuffer+i)!='1')
-				{
-					printf("%c", *(node->currentWriteBuffer + i));
-				}
-			}
+// 			for (INT32 i = 0; i < node->bufferSize; i++)
+// 			{
+// 				if (*(node->currentWriteBuffer+i)!='1')
+// 				{
+// 					printf("%c", *(node->currentWriteBuffer + i));
+// 				}
+// 			}
 
 			char *tem = node->currentReadBuffer;
 			node->currentReadBuffer = node->currentWriteBuffer;
@@ -232,6 +232,7 @@ static  void *  WINAPI tftp12IObufferHandleTask(void *arg)
 {
 	static INT32 timess = 0;
 	timess++;
+	static INT32 erro11r = 0;
 	TFTP12IOBufferNode_t *node = (TFTP12IOBufferNode_t*)arg;
 	if (node == NULL)
 	{
@@ -255,6 +256,8 @@ static  void *  WINAPI tftp12IObufferHandleTask(void *arg)
 			if (*(node->currentWriteBuffer + i) != '1')
 			{
 				printf("%c", *(node->currentWriteBuffer + i));
+				
+				erro11r++;
 			}
 		}
 		printf("\nread:%d,%d", realRead, testNum);

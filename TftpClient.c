@@ -11,9 +11,9 @@
 #include "tftp12packet.h"
 #include "tftp12header.h"
 
-static inline tftp12() {
-
-}
+// static inline tftp12() {
+// 
+// }
 int main()
 {
 	INT16 wVersion = MAKEWORD(2, 2);
