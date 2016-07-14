@@ -1,6 +1,6 @@
 #include "windows.h"
 #include "tftp12packet.h"
-#include "tftp.h"
+#include "tftp12header.h"
 #include "stdarg.h"
 #include "stdio.h"
 
@@ -107,7 +107,7 @@ INT32 tftp12CreateRequestPkt(TFTP12Description_t *desc)
 	}
 
 	/*检查各个指针是否为空*/
-	if (desc->filename == NULL || desc->sendBuffer == NULL || desc->openFile == NULL || desc->mode == NULL)
+	if (desc->filename == NULL || desc->sendBuffer == NULL || desc->mode == NULL)
 	{
 		return ERROR;
 	}
@@ -169,7 +169,7 @@ INT32 tftp12CreateOACKPkt(TFTP12Description_t *desc)
 	}
 
 	/*检查各个指针是否为空*/
-	if (desc->filename == NULL || desc->sendBuffer == NULL || desc->openFile == NULL || desc->mode == NULL)
+	if (desc->sendBuffer == NULL || desc->mode == NULL)
 	{
 		return ERROR;
 	}

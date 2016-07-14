@@ -16,6 +16,11 @@
 
 #define TFTP12_NUMBER_OF_OPTIONS	(3)
 
+enum TFTP12_ReadOrWrite {
+	TFTP12_READ=1,
+	TFTP12_WRITE,
+};
+
 enum TFTP12_TRANS_MODE
 {
 	TFTP12_NETASCII = 0,
@@ -87,6 +92,8 @@ typedef struct
 	INT32 count;
 	TFTP12ClientNode clientNode;
 } TFTP12ClientInfoList;
+
+
 
 
 INT32 test();
