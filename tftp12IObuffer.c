@@ -84,8 +84,16 @@ static TFTP12IOBufferNode_t *tftp12FindNodeByid(INT32 id)
 	return NULL;
 }
 
-
-
+/*****************************************************************
+* DESCRIPTION:
+*	读文件的下一块
+* INPUTS:
+*	id - 每个io缓冲区必须有唯一的id
+* OUTPUTS:
+*	size - 读取了多少字节
+* RETURNS:
+*	返回缓冲区？
+*****************************************************************/
 char *tftp12ReadNextBlock(INT32 id, INT32 *size)
 {
 	TFTP12IOBufferNode_t *node = tftp12FindNodeByid(id);
@@ -94,18 +102,21 @@ char *tftp12ReadNextBlock(INT32 id, INT32 *size)
 		return NULL;
 	}
 	*size = fread(node->currentReadBuffer, 1, node->blockSize, node->targetFile);
-
-	for (INT32 i = 0; i < *size; i++)
-	{
-		if (node->currentReadBuffer[i] != '1')
-		{
-			printf("\nerror");
-		}
-	}
-
 	return node->currentReadBuffer;
 }
 
+/*****************************************************************
+* DESCRIPTION:
+*	读文件的下一块
+* INPUTS:
+*	id - 每个io缓冲区必须有唯一的id
+*	buf - 写入磁盘的缓冲区
+*	writeSize - 需要写入多少字节
+* OUTPUTS:
+*	none
+* RETURNS:
+*	写入了多少字节
+*****************************************************************/
 INT32 tftp12WriteNextBlock(INT32 id, char *buf, INT32 writeSize)
 {
 	TFTP12IOBufferNode_t *node = tftp12FindNodeByid(id);
@@ -113,23 +124,38 @@ INT32 tftp12WriteNextBlock(INT32 id, char *buf, INT32 writeSize)
 	{
 		return 0;
 	}
-	for (INT32 i = 0; i < writeSize; i++)
-	{
-		if (buf[i] != '1')
-		{
-			printf("\nerror");
-		}
-	}
-
 	return fwrite(buf, 1, writeSize, node->targetFile);
 }
 
+
+/*****************************************************************
+* DESCRIPTION:
+*	初始化磁盘IO缓冲区，在option协商完成之后调用
+* INPUTS:
+*	id - 每个io缓冲区必须有唯一的id,用本地的发送端口做id
+*	blocksize - 块大小
+*	file - 已经打开的文件缓冲（暂时没用到）
+*	fileSize - 随便传
+*	rwFlag - 读还是写的标志，用(TFTP12_OPCODE_READ_REQUEST)或者(TFTP12_READ)都可以
+* OUTPUTS:
+*	none
+* RETURNS:
+*	NULL - 出现错误
+*	正常情况下返回接收缓冲区地址(临时,要改）
+*****************************************************************/
 char *tftp12IOBufferInit(INT32 id, INT32 blocksize, FILE *file, INT32 fileSize, enum TFTP12_ReadOrWrite rwFlag)
 {
 	/*应根据剩余内存大小和文件大小分配内存空间*/
 	//测试时用1M
 	/*两块缓冲区*/
 	//INT32 bufSize = ((2500) / blocksize)*blocksize + 4;
+
+	/*如果id已经存在*/
+	if (tftp12FindNodeByid(id)!=NULL)
+	{
+		return NULL;
+	}
+
 	INT32 bufSize = (blocksize + 4);
 
 	char *buf = (char *)malloc(bufSize);
@@ -187,6 +213,7 @@ char *tftp12IOBufferInit(INT32 id, INT32 blocksize, FILE *file, INT32 fileSize, 
 	return node->currentWriteBuffer;
 }
 
+/*如名,暂时不要用*/
 INT32 tftp12IOBufferFree(INT32 id)
 {
 	TFTP12IOBufferNode_t *node = tftp12FindNodeByid(id);
@@ -194,7 +221,7 @@ INT32 tftp12IOBufferFree(INT32 id)
 	{
 		return FALSE;
 	}
-	free(node->pFree);
+	//free(node->pFree);
 	tftp12IOListDelete(node);
 	free(node);
 	return TRUE;

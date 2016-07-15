@@ -12,7 +12,7 @@
 #include "tftp12header.h"
 #include "tftp12IObuffer.h"
 
-
+#define TFTP12_DEFAULT_BLOCKSIZE			(512)
 
 #define TFTP12_SERVER_DEFAULT_TIMEOUT		(3)
 #define TFTP12_SERVER_DEFAULT_RETRANSMIT	(3)
@@ -20,6 +20,9 @@
 
 #define TFTP12_BIND_FAILED_TIMES			(20)
 #define TFTP12_SERVER_OPTION_INIT			(-1)
+
+#define TFTP12_GET_BLOCKNUM(buf)		htons((*(INT16*)(buf+2)))
+#define FOEVER								for(;;)
 
 typedef struct _tftp12node
 {
@@ -137,18 +140,21 @@ void tftp12ServerServoTask(void *arg)
 			//发送错误报文
 		}
 
-		node->clientDesc.openFile = fopen(node->clientDesc.filename, "w+");
+		node->clientDesc.openFile = fopen(node->clientDesc.filename, "wb+");
 		if (node->clientDesc.openFile == NULL)
 		{
 			printf("\nfile create failed");
 			return;
 		}
+		fseek(node->clientDesc.openFile, 0, SEEK_SET);
 
 		/*如果没有解析到tsize*/
 		if (node->clientDesc.option.tsize != TFTP12_SERVER_OPTION_INIT)
 		{
 			//先不管
 		}
+
+		/*以本地的端口号做ID，保证不重复*/
 		if ((node->clientDesc.recvBuffer = tftp12IOBufferInit(node->clientDesc.localPort, \
 			node->clientDesc.option.blockSize, \
 			node->clientDesc.openFile, \
@@ -161,6 +167,8 @@ void tftp12ServerServoTask(void *arg)
 
 		/*只要有一个option就回OACK*/
 		INT32 sendBytes = 0;
+		INT32 recvBytes = 0;
+		INT32 nextBlockNumber = 0;
 		if (node->clientDesc.option.blockSize != TFTP12_SERVER_OPTION_INIT\
 			|| node->clientDesc.option.timeout != TFTP12_SERVER_OPTION_INIT\
 			|| node->clientDesc.option.tsize != TFTP12_SERVER_OPTION_INIT)
@@ -169,11 +177,40 @@ void tftp12ServerServoTask(void *arg)
 		}
 		else /*如果没有option就回ACK*/
 		{
+			/*如果没有option，使用默认的值*/
+			node->clientDesc.option.blockSize = TFTP12_DEFAULT_BLOCKSIZE;
+			node->clientDesc.option.timeout = gTftp12ServerInfo.defaultTimeout;
 			sendBytes = tftp12CreateACKPkt(&(node->clientDesc), 0);
 		}
-		tftp12SendAndRecv(&(node->clientDesc), sendBytes);
-		/*以本地的端口号做ID，保证不重复*/
-		//	tftp12IOBufferInit(node->clientDesc.localPort,)
+
+		static INT32 toalWrite = 0;
+		FOEVER
+		{
+			if (tftp12SendAndRecv(&(node->clientDesc), sendBytes,&recvBytes,FALSE) != TFTP12_OK)
+			{
+				printf("\nsend and receive error");
+			}
+
+		INT32 realWrite = tftp12WriteNextBlock(node->clientDesc.localPort, node->clientDesc.recvBuffer + 4, recvBytes-4);
+		toalWrite += realWrite;
+		if (realWrite < (recvBytes - 4))
+		{
+			printf("\nwrite error:%d",realWrite);
+		}
+		printf("\nwrite:%d", realWrite);
+			tftp12CreateACKPkt(&(node->clientDesc), nextBlockNumber);
+			nextBlockNumber++;
+			if (recvBytes < (node->clientDesc.option.blockSize + 4))
+			{
+				if (tftp12SendAndRecv(&(node->clientDesc), sendBytes, &recvBytes, TRUE) != TFTP12_OK)
+				{
+					printf("\nsend and receive error");
+				}
+				break;
+			}
+		}
+		fclose(node->clientDesc.openFile);
+		printf("\nreceive finish:%d",toalWrite);
 	}
 	else if (node->clientDesc.writeOrRead == TFTP12_READ)
 	{
@@ -200,7 +237,9 @@ void tftp12ServerMainTask(void *arg)
 	gTftp12ServerInfo.serverAddr.sin_addr.S_un.S_addr = htons(INADDR_ANY);
 	gTftp12ServerInfo.serverAddr.sin_port = htons(TFTP12_SERVER_DEFAULT_BIND_PORT);
 	gTftp12ServerInfo.serverAddr.sin_family = AF_INET;
-	if (bind(gTftp12ServerInfo.sock, (struct sockaddr*)&gTftp12ServerInfo.serverAddr, sizeof(gTftp12ServerInfo.serverAddr)) != 0)
+	if (bind(gTftp12ServerInfo.sock, \
+		(struct sockaddr*)&gTftp12ServerInfo.serverAddr, \
+		sizeof(gTftp12ServerInfo.serverAddr)) != 0)
 	{
 		printf("\nserver bind port failed!");
 		return;
@@ -240,8 +279,8 @@ void tftp12ServerMainTask(void *arg)
 		node->clientDesc.option.tsize = TFTP12_SERVER_OPTION_INIT;
 		node->clientDesc.option.timeout = TFTP12_SERVER_OPTION_INIT;
 		node->clientDesc.option.blockSize = TFTP12_SERVER_OPTION_INIT;
-		node->clientDesc.maxRetransmit = gTftp12ServerInfo.reTransmitTimes;
-		
+	//	node->clientDesc.maxRetransmit = gTftp12ServerInfo.reTransmitTimes;
+
 		tftp12ParseREQPkt(&(node->clientDesc));
 		useless = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)tftp12ServerServoTask, (LPVOID)node, 0, NULL);
 		CloseHandle(useless);

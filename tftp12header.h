@@ -80,7 +80,7 @@ typedef struct
 	INT32 transmitBytes;	//已经接收/发送的字节数
 	struct sockaddr_in peerAddr;		//对端地址
 	INT8 *recvBuffer;	//接收和发送共用缓冲区
-	INT32 recvBytes;
+	//INT32 recvBytes;
 	INT8 sendBuffer[TFTP12_CONTROL_PACKET_MAX_SIZE];
 
 	INT32 maxRetransmit;
