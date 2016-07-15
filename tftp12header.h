@@ -7,14 +7,17 @@
 
 /*协商过程报文最大长度*/
 #define TFTP12_CONTROL_PACKET_MAX_SIZE	(512)
+#define TFTP12_BUFFER_SIZE(desc)		(((TFTP12Description *)desc)->option.blockSize+4+1)
+#define TFTP12_GET_OPCODE(buf)			(htons(*(INT16*)buf))
 
-#define TFTP12_BLOCKSIZE_MAX		(8192*2)
+#define TFTP12_BLOCKSIZE_MAX		(65000)
 #define TFTP12_BLOCKSIZE_MIN		(512)
 
 #define TFTP12_TIMEOUT_MAX			(256)
 #define TFTP12_TIMEOUT_MIN			(1)
 
 #define TFTP12_NUMBER_OF_OPTIONS	(3)
+
 
 enum TFTP12_ReadOrWrite {
 	TFTP12_READ=1,
@@ -54,6 +57,7 @@ enum TFTP12_SEND_RECV_STAUTS
 	TFTP12_TIMEOUT,
 	TFTP12_SELECT_ERROR,
 	TFTP12_SEND_FAILED,
+	TFTP12_NOCONNECT,
 };
 
 typedef struct
@@ -68,7 +72,7 @@ typedef struct
 {
 	INT16 writeOrRead;
 	INT8 *filename;	//目的文件名
-	FILE openFile;	//打开的文件
+	FILE *openFile;	//打开的文件
 	INT8 *mode;	//netascii/octet/mail
 	TFTP12Option option;
 	INT32 localPort;	//本地出端口
@@ -78,21 +82,60 @@ typedef struct
 	INT8 *recvBuffer;	//接收和发送共用缓冲区
 	INT32 recvBytes;
 	INT8 sendBuffer[TFTP12_CONTROL_PACKET_MAX_SIZE];
-}TFTP12Description_t;
 
-typedef struct _tftp12node
-{
-	TFTP12Description_t clientInfo;
-	struct _tftp12node *next;
-}TFTP12ClientNode;
+	INT32 maxRetransmit;
+}TFTP12Description;
+
+// typedef struct _tftp12node
+// {
+// 	TFTP12Description clientInfo;
+// 	struct _tftp12node *next;
+// }TFTP12ClientNode;
+// 
+// 
+// typedef struct
+// {
+// 	INT32 count;
+// 	TFTP12ClientNode clientNode;
+// } TFTP12ClientInfoList;
 
 
-typedef struct
-{
-	INT32 count;
-	TFTP12ClientNode clientNode;
-} TFTP12ClientInfoList;
 
+/******************************创建报文**********************************************/
+/*创建一个Request报文，返回报文长度*/
+INT32 tftp12CreateREQPkt(TFTP12Description *pktDescriptor);
+
+//还未实现
+/*创建一个Data报文，返回报文长度*/
+//INT32 tftp12CreateDataPkt(TFTP12Description *pktDescriptor);
+
+/*创建一个ACK报文，返回报文长度*/
+INT32 tftp12CreateACKPkt(TFTP12Description *pktDescriptor, INT32 blockNum);
+
+/*创建一个OACK报文，返回报文长度*/
+INT32 tftp12CreateOACKPkt(TFTP12Description *pktDescriptor);
+
+/*创建一个Error报文，返回报文长度*/
+INT32 tftp12CreateERRPkt(TFTP12Description *pktDescriptor, INT16 errorCode, UINT8 *errorMsg);
+/****************************************************************************/
+
+/*****************************解析报文***********************************************/
+/*解析Request报文，返回报文长度*/
+INT32 tftp12ParseREQPkt(TFTP12Description *pktDescriptor);
+
+//还未实现
+/*解析一个Data报文，返回报文长度*/
+//INT32 tftp12ParseDataPkt(TFTP12Description *pktDescriptor);
+
+/*解析一个ACK报文，返回报文长度*/
+INT16 tftp12ParseACKPkt(TFTP12Description *pktDescriptor);
+
+/*解析一个OACK报文，返回报文长度*/
+INT32 tftp12ParseOACKPkt(TFTP12Description *pktDescriptor);
+
+/*解析一个Error报文，返回报文长度*/
+INT32 tftp12ParseERRPkt(TFTP12Description *pktDescriptor, INT16 errorCode, UINT8 *errorMsg);
+/****************************************************************************/
 
 
 

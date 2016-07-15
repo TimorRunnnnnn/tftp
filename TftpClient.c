@@ -14,6 +14,8 @@
 static inline tftp12() {
 
 }
+
+
 int main()
 {
 	INT16 wVersion = MAKEWORD(2, 2);
@@ -32,8 +34,10 @@ int main()
 		EXIT();
 	}
 
-
-	test();
+	tftp12ServerEnable();
+	//extern void testtrans();
+ 	//testtrans();
+// 	test();
 
 	char input[10];
 	while (1)

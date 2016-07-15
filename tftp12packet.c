@@ -74,146 +74,183 @@ static inline tftp12StrReplace(char *buf, INT32 len)
 }
 
 
-INT32 tftp12ExtractOption(char *buffer, INT32 len, TFTP12Option *option)
-{
-	char *position = NULL;
-	INT32 num = 0;
-	tftp12StrReplace(buffer, len);
-	for (INT32 i = 0; i < TFTP12_NUMBER_OF_OPTIONS; i++)
-	{
-		position = strstr(buffer, tftp12ConstStrOption[i]);
-		if (position == NULL)
-		{
-			continue;
-		}
-		position++;
-		num = tftp12StrToNum(position);
-		if (num < 0)
-		{
-			return ERROR;
-		}
+//INT32 tftp12ExtractOption(char *buffer, INT32 len, TFTP12Option *option)
+// {
+// 	char *position = NULL;
+// 	INT32 num = 0;
+// 	tftp12StrReplace(buffer, len);
+// 	for (INT32 i = 0; i < TFTP12_NUMBER_OF_OPTIONS; i++)
+// 	{
+// 		position = strstr(buffer, tftp12ConstStrOption[i]);
+// 		if (position == NULL)
+// 		{
+// 			continue;
+// 		}
+// 		position++;
+// 		num = tftp12StrToNum(position);
+// 		if (num < 0)
+// 		{
+// 			return ERROR;
+// 		}
+// 
+// 		/*必须保证TFTP12Option定义顺序,与tftp12ConstStrOption定义的顺序一致*/
+// 		((INT32 *)option)[i] = num;
+// 	}
+// 	return TRUE;
+// }
 
-		/*必须保证TFTP12Option定义顺序,与tftp12ConstStrOption定义的顺序一致*/
-		((INT32 *)option)[i] = num;
-	}
-	return TRUE;
-}
+// INT32 tftp12CreateRequestPkt(TFTP12Description *desc)
+// {
+// 	if (desc == NULL)
+// 	{
+// 		return ERROR;
+// 	}
+// 
+// 	/*检查各个指针是否为空*/
+// 	if (desc->filename == NULL || desc->sendBuffer == NULL || desc->mode == NULL)
+// 	{
+// 		return ERROR;
+// 	}
+// 
+// 	/*只接受opcode = 1或2*/
+// 	if (!(desc->writeOrRead == TFTP12_OPCODE_READ_REQUEST || desc->writeOrRead == TFTP12_OPCODE_WRITE_REQUEST))
+// 	{
+// 		return ERROR;
+// 	}
+// 
+// 	memset(desc->sendBuffer, '\0', TFTP12_CONTROL_PACKET_MAX_SIZE);
+// 
+// 	char *pWalk = desc->sendBuffer;
+// 	*pWalk = 0;
+// 	pWalk++;
+// 	*pWalk = (INT8)(desc->writeOrRead);
+// 	pWalk++;
+// 	strcpy(pWalk, desc->filename);
+// 	pWalk += strlen(desc->filename) + 1;
+// 	strcpy(pWalk, desc->mode);
+// 	pWalk += strlen(desc->mode) + 1;
+// 
+// 
+// 	/*INT32最长为10个字符*/
+// 	char num[11];
+// 
+// 	/*填充blksize字段*/
+// 	strcpy(pWalk, STR_BLKSIZE);
+// 	pWalk += strlen(STR_BLKSIZE) + 1;
+// 	_itoa(desc->option.blockSize, num, 10);
+// 	strcpy(pWalk, num);
+// 	pWalk += strlen(num) + 1;
+// 
+// 	/*填充timeout字段*/
+// 	strcpy(pWalk, STR_TIMEOUT);
+// 	pWalk += strlen(STR_TIMEOUT) + 1;
+// 	_itoa(desc->option.timeout, num, 10);
+// 	strcpy(pWalk, num);
+// 	pWalk += strlen(num) + 1;
+// 
+// 	/*填充tsize字段*/
+// 	strcpy(pWalk, STR_TSIZE);
+// 	pWalk += strlen(STR_TSIZE) + 1;
+// 	_itoa(desc->option.tsize, num, 10);
+// 	strcpy(pWalk, num);
+// 	pWalk += strlen(num) + 1;
+// 	*pWalk = 0;
+// 	pWalk++;
+// 
+// 	/*返回报文长度*/
+// 	return  pWalk - desc->sendBuffer;
+// }
 
-INT32 tftp12CreateRequestPkt(TFTP12Description_t *desc)
-{
-	if (desc == NULL)
-	{
-		return ERROR;
-	}
-
-	/*检查各个指针是否为空*/
-	if (desc->filename == NULL || desc->sendBuffer == NULL || desc->mode == NULL)
-	{
-		return ERROR;
-	}
-
-	/*只接受opcode = 1或2*/
-	if (!(desc->writeOrRead == TFTP12_OPCODE_READ_REQUEST || desc->writeOrRead == TFTP12_OPCODE_WRITE_REQUEST))
-	{
-		return ERROR;
-	}
-
-	memset(desc->sendBuffer, '\0', TFTP12_CONTROL_PACKET_MAX_SIZE);
-
-	char *pWalk = desc->sendBuffer;
-	*pWalk = 0;
-	pWalk++;
-	*pWalk = (INT8)(desc->writeOrRead);
-	pWalk++;
-	strcpy(pWalk, desc->filename);
-	pWalk += strlen(desc->filename) + 1;
-	strcpy(pWalk, desc->mode);
-	pWalk += strlen(desc->mode) + 1;
-
-
-	/*INT32最长为10个字符*/
-	char num[11];
-
-	/*填充blksize字段*/
-	strcpy(pWalk, STR_BLKSIZE);
-	pWalk += strlen(STR_BLKSIZE) + 1;
-	_itoa(desc->option.blockSize, num, 10);
-	strcpy(pWalk, num);
-	pWalk += strlen(num) + 1;
-
-	/*填充timeout字段*/
-	strcpy(pWalk, STR_TIMEOUT);
-	pWalk += strlen(STR_TIMEOUT) + 1;
-	_itoa(desc->option.timeout, num, 10);
-	strcpy(pWalk, num);
-	pWalk += strlen(num) + 1;
-
-	/*填充tsize字段*/
-	strcpy(pWalk, STR_TSIZE);
-	pWalk += strlen(STR_TSIZE) + 1;
-	_itoa(desc->option.tsize, num, 10);
-	strcpy(pWalk, num);
-	pWalk += strlen(num) + 1;
-	*pWalk = 0;
-	pWalk++;
-
-	/*返回报文长度*/
-	return  pWalk - desc->sendBuffer;
-}
-
-INT32 tftp12CreateOACKPkt(TFTP12Description_t *desc)
-{
-	if (desc == NULL)
-	{
-		return ERROR;
-	}
-
-	/*检查各个指针是否为空*/
-	if (desc->sendBuffer == NULL || desc->mode == NULL)
-	{
-		return ERROR;
-	}
-
-	memset(desc->sendBuffer, '\0', TFTP12_BUFFER_SIZE(desc));
-
-	char *pWalk = desc->sendBuffer;
-	*pWalk = 0;
-	pWalk++;
-	*pWalk = (INT8)(TFTP12_OPCODE_OACK);
-	pWalk++;
-
-	strcpy(pWalk, desc->filename);
-	pWalk += strlen(desc->filename) + 1;
-	strcpy(pWalk, desc->mode);
-	pWalk += strlen(desc->mode) + 1;
+// INT32 tftp12CreateOACKPkt(TFTP12Description *desc)
+// {
+// 	if (desc == NULL)
+// 	{
+// 		return ERROR;
+// 	}
+// 
+// 	/*检查各个指针是否为空*/
+// 	if (desc->sendBuffer == NULL || desc->mode == NULL)
+// 	{
+// 		return ERROR;
+// 	}
+// 
+// 	memset(desc->sendBuffer, '\0', TFTP12_BUFFER_SIZE(desc));
+// 
+// 	char *pWalk = desc->sendBuffer;
+// 	*pWalk = 0;
+// 	pWalk++;
+// 	*pWalk = (INT8)(TFTP12_OPCODE_OACK);
+// 	pWalk++;
+// 
+// 	strcpy(pWalk, desc->filename);
+// 	pWalk += strlen(desc->filename) + 1;
+// 	strcpy(pWalk, desc->mode);
+// 	pWalk += strlen(desc->mode) + 1;
+// 
+// 
+// 	/*INT32最长为10个字符*/
+// 	char num[10];
+// 
+// 	/*填充blksize字段*/
+// 	strcpy(pWalk, STR_BLKSIZE);
+// 	pWalk += strlen(STR_BLKSIZE) + 1;
+// 	_itoa(desc->option.blockSize, num, 10);
+// 	strcpy(pWalk, num);
+// 	pWalk += strlen(num) + 1;
+// 
+// 	/*填充timeout字段*/
+// 	strcpy(pWalk, STR_TIMEOUT);
+// 	pWalk += strlen(STR_TIMEOUT) + 1;
+// 	_itoa(desc->option.timeout, num, 10);
+// 	strcpy(pWalk, num);
+// 	pWalk += strlen(num) + 1;
+// 
+// 	/*填充tsize字段*/
+// 	strcpy(pWalk, STR_TSIZE);
+// 	pWalk += strlen(STR_TSIZE) + 1;
+// 	_itoa(desc->option.tsize, num, 10);
+// 	strcpy(pWalk, num);
+// 	pWalk += strlen(num) + 1;
+// 	*pWalk = 0;
+// 	pWalk++;
+// 
+// 	/*返回报文长度*/
+// 	return  pWalk - desc->sendBuffer;
+// }
+// 
+// 
+// 
 
 
-	/*INT32最长为10个字符*/
-	char num[10];
 
-	/*填充blksize字段*/
-	strcpy(pWalk, STR_BLKSIZE);
-	pWalk += strlen(STR_BLKSIZE) + 1;
-	_itoa(desc->option.blockSize, num, 10);
-	strcpy(pWalk, num);
-	pWalk += strlen(num) + 1;
 
-	/*填充timeout字段*/
-	strcpy(pWalk, STR_TIMEOUT);
-	pWalk += strlen(STR_TIMEOUT) + 1;
-	_itoa(desc->option.timeout, num, 10);
-	strcpy(pWalk, num);
-	pWalk += strlen(num) + 1;
 
-	/*填充tsize字段*/
-	strcpy(pWalk, STR_TSIZE);
-	pWalk += strlen(STR_TSIZE) + 1;
-	_itoa(desc->option.tsize, num, 10);
-	strcpy(pWalk, num);
-	pWalk += strlen(num) + 1;
-	*pWalk = 0;
-	pWalk++;
 
-	/*返回报文长度*/
-	return  pWalk - desc->sendBuffer;
-}
+
+// char *tftp12CreateDataPkt(char *buf, INT16 blockNum) 
+// {
+// 	char *pktHead = buf - 4;
+// 	pktHead = 0;
+// 	pktHead++;
+// 	pktHead = TFTP12_OPCODE_DATA;
+// 	pktHead++;
+// 	*(INT16 *)pktHead = htonl(blockNum);
+// 	pktHead++;
+// 	return pktHead;
+// }
+// 
+// INT16 tftp12ParseDataPkt(char *buf,INT32 blockSize)
+// {
+// 	INT16 blockNum = 0;
+// 	char *tem = buf;
+// 	tem++;
+// 	if (*tem!=TFTP12_OPCODE_DATA)
+// 	{
+// 		//换宏
+// 		return -1;
+// 	}
+// 	tem++;
+// 	blockNum = *(INT16*)tem;
+// 	blockNum = htonl(blockNum);
+// 	return blockNum;
+// }
