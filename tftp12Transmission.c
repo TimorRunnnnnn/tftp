@@ -139,13 +139,17 @@ INT32 tftp12SendAndRecv(TFTP12Description *desc, char *sendBuf, INT32 SendPktSiz
 			}
 			INT32 len = sizeof(recvPeerAddr);
 			*recvBytes = recvfrom(desc->sock, desc->recvBuffer, desc->option.blockSize + 5, 0, (struct sockaddr*)&recvPeerAddr, &len);
-
 			if (*recvBytes < 0)
 			{
 				if (GetLastError() == 10054)
 				{
 					return TFTP12_NOCONNECT;
 				}
+			}
+			else if (*recvBytes>(desc->option.blockSize+4))
+			{
+				/*如果大于了正常报文的最大值，继续*/
+				continue;
 			}
 			//printf("\nselect time:%d,%d", timeout.tv_sec, timeout.tv_usec);
 			INT32 recvOPCode = TFTP12_GET_OPCODE(desc->recvBuffer);

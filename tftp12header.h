@@ -3,6 +3,7 @@
 #include "windows.h"
 #include "stdio.h"
 #include "stdlib.h"
+#include "tftp12Log.h"
 
 /*协商过程报文最大长度*/
 #define TFTP12_CONTROL_PACKET_MAX_SIZE	(512)

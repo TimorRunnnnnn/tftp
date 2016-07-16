@@ -34,6 +34,8 @@ int main()
 		EXIT();
 	}
 
+	tftp12LogInit();
+	tftp12ClientLogMsg("testlog:%d...%d.%s;", 123,123222, "testStr");
 	extern INT32 tftp12ServerEnable();
 	tftp12ServerEnable();
 	//extern void testtrans();
