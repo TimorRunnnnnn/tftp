@@ -151,19 +151,19 @@ char *tftp12IOBufferInit(INT32 id, INT32 blocksize, FILE *file, INT32 fileSize, 
 	//INT32 bufSize = ((2500) / blocksize)*blocksize + 4;
 
 	/*如果id已经存在*/
-	if (tftp12FindNodeByid(id)!=NULL)
+	if (tftp12FindNodeByid(id) != NULL)
 	{
 		return NULL;
 	}
 
-	INT32 bufSize = (blocksize + 4);
+	INT32 bufSize = (blocksize + 4 + 1);
 
 	char *buf = (char *)malloc(bufSize);
 	if (buf == NULL)
 	{
 		return NULL;
 	}
-
+	memset(buf, 0, bufSize);
 	TFTP12IOBufferNode_t *node = (TFTP12IOBufferNode_t*)malloc(sizeof(TFTP12IOBufferNode_t));
 	if (node == NULL)
 	{
@@ -176,11 +176,21 @@ char *tftp12IOBufferInit(INT32 id, INT32 blocksize, FILE *file, INT32 fileSize, 
 	//node->bufferSize = bufSize - 4;
 	//node->rwFlag = rwFlag;
 	node->pFree = buf;
+	//	free(node->pFree);
 	node->targetFile = file;
 
-	node->currentReadBuffer = buf + 4;
-	node->currentWriteBuffer = buf + 4;
-
+	/*如果是从磁盘读（向对方发数据）需要预留4个bytes的报文头部*/
+	if (rwFlag==TFTP12_READ)
+	{
+		node->currentReadBuffer = buf + 4;
+		node->currentWriteBuffer = buf + 4;
+	}
+	else 
+	{
+		node->currentReadBuffer = buf;
+		node->currentWriteBuffer = buf;
+	}
+	
 	// 	node->rwStart = node->pBuf + 4;
 	// 	node->currentRead = node->rwStart;
 	// 	node->currentWrite = node->rwStart;
@@ -221,7 +231,7 @@ INT32 tftp12IOBufferFree(INT32 id)
 	{
 		return FALSE;
 	}
-	//free(node->pFree);
+	free(node->pFree);
 	tftp12IOListDelete(node);
 	free(node);
 	return TRUE;

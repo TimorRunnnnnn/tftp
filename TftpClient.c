@@ -34,6 +34,7 @@ int main()
 		EXIT();
 	}
 
+	extern INT32 tftp12ServerEnable();
 	tftp12ServerEnable();
 	//extern void testtrans();
  	//testtrans();

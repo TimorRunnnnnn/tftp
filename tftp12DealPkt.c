@@ -603,12 +603,9 @@ INT32 tftp12ParseERRPkt(TFTP12Description *pktDescriptor, INT16 errorCode, UINT8
 char *tftp12CreateDataPkt(char *buf, INT16 blockNum)
 {
 	char *pktHead = buf - 4;
-	pktHead = 0;
-	pktHead++;
-	pktHead = TFTP12_OPCODE_DATA;
-	pktHead++;
-	*(INT16 *)pktHead = htonl(blockNum);
-	pktHead++;
+	*pktHead = 0;
+	*(pktHead+1) = TFTP12_OPCODE_DATA;
+	*(INT16 *)(pktHead+2) = htons(blockNum);
 	return pktHead;
 }
 
@@ -624,7 +621,7 @@ INT16 tftp12ParseDataPkt(char *buf, INT32 blockSize)
 	}
 	tem++;
 	blockNum = *(INT16*)tem;
-	blockNum = htonl(blockNum);
+	blockNum = htons(blockNum);
 	return blockNum;
 }
 

@@ -1,5 +1,4 @@
-#ifndef _TFTP_H_
-#define _TFTP_H_
+#pragma once
 
 #include "windows.h"
 #include "stdio.h"
@@ -7,10 +6,12 @@
 
 /*协商过程报文最大长度*/
 #define TFTP12_CONTROL_PACKET_MAX_SIZE	(512)
-#define TFTP12_BUFFER_SIZE(desc)		(((TFTP12Description *)desc)->option.blockSize+4+1)
+#define TFTP12_BUFFER_SIZE(desc)		(((TFTP12Description *)desc)->option.blockSize+1)
 #define TFTP12_GET_OPCODE(buf)			(htons(*(INT16*)buf))
+#define TFTP12_GET_BLOCKNUM(buf)		htons((*(INT16*)(buf+2)))
+#define TFTP12_GET_ERRORCODE(buf)		TFTP12_GET_BLOCKNUM(buf)
 
-#define TFTP12_BLOCKSIZE_MAX		(65000)
+#define TFTP12_BLOCKSIZE_MAX		(65464)
 #define TFTP12_BLOCKSIZE_MIN		(512)
 
 #define TFTP12_TIMEOUT_MAX			(256)
@@ -58,6 +59,7 @@ enum TFTP12_SEND_RECV_STAUTS
 	TFTP12_SELECT_ERROR,
 	TFTP12_SEND_FAILED,
 	TFTP12_NOCONNECT,
+	TFTP12_RECV_A_ERROR_PKT,
 };
 
 typedef struct
@@ -137,9 +139,8 @@ INT32 tftp12ParseOACKPkt(TFTP12Description *pktDescriptor);
 INT32 tftp12ParseERRPkt(TFTP12Description *pktDescriptor, INT16 errorCode, UINT8 *errorMsg);
 /****************************************************************************/
 
+char *tftp12CreateDataPkt(char *buf, INT16 blockNum);
 
+INT16 tftp12ParseDataPkt(char *buf, INT32 blockSize);
 
 INT32 test();
-
-
-#endif

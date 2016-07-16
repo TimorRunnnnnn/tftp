@@ -64,6 +64,7 @@
 * INPUTS:
 *	desc - tftp会话结构的指针，需要用到里面的sendBuffer和recvBuffer，
 			用tftp12IOBufferInit的返回值赋给recvBuffer
+*	sendBuf - 发送缓冲区
 *	SendPktSize - 要发送的字节数
 *	lastACK	- 可选TRUE和FALSE，接收文件，最后一个ACK不需要接收data报文
 			  需要为TRUE
@@ -75,34 +76,32 @@
 		↑
 	这里需要修改
 *****************************************************************/
-INT32 tftp12SendAndRecv(TFTP12Description *desc, INT32 SendPktSize, INT32 *recvBytes,INT32 lastACK)
+INT32 tftp12SendAndRecv(TFTP12Description *desc, char *sendBuf, INT32 SendPktSize, INT32 *recvBytes, INT32 lastPkt)
 {
 	INT32 selectRet = 0;
-	INT32 sendLen = sendto(desc->sock, desc->sendBuffer, SendPktSize, \
+	INT32 sendLen = sendto(desc->sock, sendBuf, SendPktSize, \
 		0, (struct sockaddr *)&desc->peerAddr, sizeof(desc->peerAddr));
 	if (sendLen != SendPktSize)
 	{
 		printf("\nsendError,Expect:%d,Send:%d", SendPktSize, sendLen);
-		if (sendLen==-1)
+		if (sendLen == -1)
 		{
 			printf("\nsendError:%d", GetLastError());
 		}
 		return ERROR;
 	}
-	if (TFTP12_GET_OPCODE(desc->sendBuffer) == TFTP12_OPCODE_ACK)
+	if (lastPkt == TRUE)
 	{
-		if (lastACK == TRUE)
-		{
-			return TFTP12_OK;
-		}
+		return TFTP12_OK;
 	}
+
 	struct timeval timeout = { desc->option.timeout,0 };
 	struct fd_set fd;
 	memset(&fd, 0, sizeof(fd));
 	INT32 sendTimes = 0;
 
-	struct timeval currentTime = { 0,0 };
-	while(1)
+	//struct timeval currentTime = { 0,0 };
+	while (1)
 	{
 		FD_ZERO(&fd);
 		FD_SET(desc->sock, &fd);
@@ -123,7 +122,7 @@ INT32 tftp12SendAndRecv(TFTP12Description *desc, INT32 SendPktSize, INT32 *recvB
 			/*超时才重置时间*/
 			timeout.tv_sec = desc->option.timeout;
 			timeout.tv_usec = 0;
-			sendLen = sendto(desc->sock, desc->sendBuffer, SendPktSize, \
+			sendLen = sendto(desc->sock, sendBuf, SendPktSize, \
 				0, (struct sockaddr *)&desc->peerAddr, sizeof(desc->peerAddr));
 			if (sendLen != SendPktSize)
 			{
@@ -139,23 +138,30 @@ INT32 tftp12SendAndRecv(TFTP12Description *desc, INT32 SendPktSize, INT32 *recvB
 				continue;
 			}
 			INT32 len = sizeof(recvPeerAddr);
-			*recvBytes = recvfrom(desc->sock, desc->recvBuffer, TFTP12_BUFFER_SIZE(desc), 0, (struct sockaddr*)&recvPeerAddr, &len);
-			
+			*recvBytes = recvfrom(desc->sock, desc->recvBuffer, desc->option.blockSize + 5, 0, (struct sockaddr*)&recvPeerAddr, &len);
+
 			if (*recvBytes < 0)
 			{
-				if (GetLastError()==10054)
+				if (GetLastError() == 10054)
 				{
 					return TFTP12_NOCONNECT;
 				}
 			}
-
+			//printf("\nselect time:%d,%d", timeout.tv_sec, timeout.tv_usec);
 			INT32 recvOPCode = TFTP12_GET_OPCODE(desc->recvBuffer);
-			INT32 sendOPCode = TFTP12_GET_OPCODE(desc->sendBuffer);
+			INT32 sendOPCode = TFTP12_GET_OPCODE(sendBuf);
 
-			/*如果出现错误报文，同样视为收到了正确的报文，在外部处理*/
+			/*如果出现错误报文，除了errorcode=5不中断意外，其余返回错误*/
 			if (recvOPCode == TFTP12_OPCODE_ERROR)
 			{
-				return TFTP12_OK;
+				if (TFTP12_GET_ERRORCODE(desc->recvBuffer) == TFTP12_UNKNOWN_TRANSFER_ID)
+				{
+					return TFTP12_OK;
+				}
+				else
+				{
+					return TFTP12_RECV_A_ERROR_PKT;
+				}
 			}
 			if (sendOPCode == TFTP12_OPCODE_READ_REQUEST)
 			{
@@ -189,9 +195,9 @@ INT32 tftp12SendAndRecv(TFTP12Description *desc, INT32 SendPktSize, INT32 *recvB
 				}
 				continue;
 			}
-			else if (sendOPCode==TFTP12_OPCODE_OACK)
+			else if (sendOPCode == TFTP12_OPCODE_OACK)
 			{
-				if (recvOPCode==TFTP12_OPCODE_ACK||recvOPCode==TFTP12_OPCODE_DATA)
+				if ((recvOPCode == TFTP12_OPCODE_ACK&&TFTP12_GET_BLOCKNUM(desc->recvBuffer) == 0) || recvOPCode == TFTP12_OPCODE_DATA)
 				{
 					return TFTP12_OK;
 				}
