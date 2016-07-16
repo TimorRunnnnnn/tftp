@@ -88,7 +88,7 @@ typedef struct _tftp12serverinfo
 	TFTP12ClientList clientList;
 }TFTP12ServerInfo;
 
-TFTP12ServerInfo gTftp12ServerInfo;
+static TFTP12ServerInfo tftp12ServerInfo;
 
 #define  tftp12ServoTaskExit(node)	{\
 			printf("\ntask exit, port:%d",node->clientDesc.localPort);\
@@ -103,15 +103,17 @@ TFTP12ServerInfo gTftp12ServerInfo;
 			return;\
 }
 
+
+
 static void tftp12ClientListInsert(TFTP12ClientNode *node)
 {
-	if (gTftp12ServerInfo.clientList.head == NULL)
+	if (tftp12ServerInfo.clientList.head == NULL)
 	{
-		gTftp12ServerInfo.clientList.head = node;
+		tftp12ServerInfo.clientList.head = node;
 		return;
 	}
 
-	TFTP12ClientNode *pwalk = gTftp12ServerInfo.clientList.head;
+	TFTP12ClientNode *pwalk = tftp12ServerInfo.clientList.head;
 	while (pwalk->next != NULL)
 	{
 		pwalk = pwalk->next;
@@ -121,14 +123,14 @@ static void tftp12ClientListInsert(TFTP12ClientNode *node)
 }
 static void tftp12ClientListDelete(TFTP12ClientNode *node)
 {
-	if (node == gTftp12ServerInfo.clientList.head)
+	if (node == tftp12ServerInfo.clientList.head)
 	{
-		gTftp12ServerInfo.clientList.head = node->next;
-		gTftp12ServerInfo.clientList.count--;
+		tftp12ServerInfo.clientList.head = node->next;
+		tftp12ServerInfo.clientList.count--;
 		return;
 	}
 
-	TFTP12ClientNode *pWalk = gTftp12ServerInfo.clientList.head;
+	TFTP12ClientNode *pWalk = tftp12ServerInfo.clientList.head;
 	while (pWalk->next != NULL)
 	{
 		if (pWalk->next == node)
@@ -243,7 +245,7 @@ void tftp12ServerServoTask(void *arg)
 		}
 		else/*如果没有option就回ACK*/
 		{
-			desc->option.timeout = gTftp12ServerInfo.defaultTimeout;
+			desc->option.timeout = tftp12ServerInfo.defaultTimeout;
 			pktBytes = tftp12CreateACKPkt(&(node->clientDesc), 0);
 			nextBlockNumber = 1;
 		}
@@ -409,21 +411,21 @@ void tftp12ServerMainTask(void *arg)
 
 	memset(&peerAddr, 0, sizeof(peerAddr));
 	memset(recvBuff, 0, sizeof(recvBuff));
-	memset(&gTftp12ServerInfo, 0, sizeof(gTftp12ServerInfo));
-	gTftp12ServerInfo.defaultTimeout = TFTP12_SERVER_DEFAULT_TIMEOUT;
-	gTftp12ServerInfo.reTransmitTimes = TFTP12_SERVER_DEFAULT_RETRANSMIT;
-	gTftp12ServerInfo.sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if (gTftp12ServerInfo.sock < 0)
+	memset(&tftp12ServerInfo, 0, sizeof(tftp12ServerInfo));
+	tftp12ServerInfo.defaultTimeout = TFTP12_SERVER_DEFAULT_TIMEOUT;
+	tftp12ServerInfo.reTransmitTimes = TFTP12_SERVER_DEFAULT_RETRANSMIT;
+	tftp12ServerInfo.sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (tftp12ServerInfo.sock < 0)
 	{
 		printf("\nserver create socket failed!");
 		return;
 	}
-	gTftp12ServerInfo.serverAddr.sin_addr.S_un.S_addr = htons(INADDR_ANY);
-	gTftp12ServerInfo.serverAddr.sin_port = htons(TFTP12_SERVER_DEFAULT_BIND_PORT);
-	gTftp12ServerInfo.serverAddr.sin_family = AF_INET;
-	if (bind(gTftp12ServerInfo.sock, \
-		(struct sockaddr*)&gTftp12ServerInfo.serverAddr, \
-		sizeof(gTftp12ServerInfo.serverAddr)) != 0)
+	tftp12ServerInfo.serverAddr.sin_addr.S_un.S_addr = htons(INADDR_ANY);
+	tftp12ServerInfo.serverAddr.sin_port = htons(TFTP12_SERVER_DEFAULT_BIND_PORT);
+	tftp12ServerInfo.serverAddr.sin_family = AF_INET;
+	if (bind(tftp12ServerInfo.sock, \
+		(struct sockaddr*)&tftp12ServerInfo.serverAddr, \
+		sizeof(tftp12ServerInfo.serverAddr)) != 0)
 	{
 		printf("\nserver bind port failed!");
 		return;
@@ -436,7 +438,7 @@ void tftp12ServerMainTask(void *arg)
 	TFTP12ClientNode *node;
 	while (1)
 	{
-		recvBytes = recvfrom(gTftp12ServerInfo.sock, recvBuff, TFTP12_CONTROL_PACKET_MAX_SIZE, \
+		recvBytes = recvfrom(tftp12ServerInfo.sock, recvBuff, TFTP12_CONTROL_PACKET_MAX_SIZE, \
 			0, (struct sockaddr*)&peerAddr, &fromLen);
 		if (recvBytes < 0)
 		{
@@ -465,7 +467,7 @@ void tftp12ServerMainTask(void *arg)
 		node->clientDesc.option.tsize = TFTP12_SERVER_OPTION_INIT;
 		node->clientDesc.option.timeout = TFTP12_SERVER_OPTION_INIT;
 		node->clientDesc.option.blockSize = TFTP12_SERVER_OPTION_INIT;
-		node->clientDesc.maxRetransmit = gTftp12ServerInfo.reTransmitTimes;
+		node->clientDesc.maxRetransmit = tftp12ServerInfo.reTransmitTimes;
 
 		tftp12ParseREQPkt(&(node->clientDesc));
 		useless = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)tftp12ServerServoTask, (LPVOID)node, 0, NULL);
