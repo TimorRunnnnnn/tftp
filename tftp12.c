@@ -15,7 +15,7 @@ const INT32 tranModeStrLen[2] = { 8,5 };
 // }
 
 
-INT32 tftpReadFrom(FILE *file, TFTP12Description_t *request)
+INT32 tftpReadFrom(FILE *file, TFTP12Description *request)
 {
 
 	// 	if (/*file==NULL||*/request==NULL||request->destFilename==NULL||request->sourceFilename==NULL)
@@ -93,7 +93,7 @@ INT32 tftpReadFrom(FILE *file, TFTP12Description_t *request)
 
 INT32 test()
 {
-	TFTP12Description_t testDesc;
+	TFTP12Description testDesc;
 // 
 // 	FILE *fd = fopen("test.txt", "w+");
 // 	char a[20];
@@ -120,21 +120,17 @@ INT32 test()
 	testDesc.writeOrRead = TFTP12_OPCODE_READ_REQUEST;
 	//testDesc.openFile = 123;
 	testDesc.mode = "ocete";
-	tftp12CreateRequestPkt(&testDesc);
+	//tftp12CreateRequestPkt(&testDesc);
 
 	FILE *tFile = fopen("test.txt", "r");
 
 // 	char *rea = malloc(5000000);
-// 	INT32 x = 1000000;
-// 	for (INT32 i=0;i<x/2000;i++)
+// 	INT32 x = fread(rea, 1, 5000000, tFile);
+// 	for (INT32 i=0;i<x;i++)
 // 	{
-// 		fread(&rea[i*2000], 1, 2000, tFile);
-// 		for (int j = 0; j < 2000;j++)
+// 		if (rea[i]!='1')
 // 		{
-// 			if (rea[i] != '1')
-// 			{
-// 				printf("error");
-// 			}
+// 			printf("error");
 // 		}
 // 	}
 
@@ -152,9 +148,9 @@ INT32 test()
 
 		//while (1)
 		{
-			extern INT32 testNum, testNum2;
-			testNum = 0;
-			testNum2 = 0;
+// 			extern INT32 testNum, testNum2;
+// 			testNum = 0;
+// 			testNum2 = 0;
 // 
 // 			fseek(tFile, 0, SEEK_SET);
 // 			tftp12IOBufferFree(1);
@@ -170,7 +166,10 @@ INT32 test()
 // // 						//break;
 // // 					}
 // 				}
-				//tftp12WriteNextBlock(2, tem, rsize);
+				if (tftp12WriteNextBlock(2, tem, rsize) != rsize)
+				{
+					printf("error");
+				}
 				for (INT32 i = 0; i < rsize; i++)
 				{
 					*(tem + i) = 0;
@@ -185,12 +184,13 @@ INT32 test()
 			//Sleep(100);
 		}
 	}
+	tftp12IOBufferFree(1);
+	tftp12IOBufferFree(2);
+ 	fclose(wFile);
+ 	fclose(tFile);
 
-// 	fclose(wFile);
-// 	fclose(tFile);
 
-
-	tftp12ExtractOption(testDesc.sendBuffer, 512, &testDesc.option);
+	//tftp12ExtractOption(testDesc.sendBuffer, 512, &testDesc.option);
 	// 	tftp12ExtractOption("timeout\0123\0blksize\01x34\0tsize\0111\0", &testDesc.option);
 	// 	tftp12ExtractOption("blksize\01234\0timeout\0123\0tsize\0111\0", &testDesc.option);
 	return 1;

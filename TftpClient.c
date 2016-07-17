@@ -11,9 +11,11 @@
 #include "tftp12packet.h"
 #include "tftp12header.h"
 
-// static inline tftp12() {
-// 
-// }
+static inline tftp12() {
+
+}
+
+
 int main()
 {
 	INT16 wVersion = MAKEWORD(2, 2);
@@ -32,8 +34,13 @@ int main()
 		EXIT();
 	}
 
-
-	test();
+	tftp12LogInit();
+	tftp12ClientLogMsg("testlog:%d...%d.%s;", 123,123222, "testStr");
+	extern INT32 tftp12ServerEnable();
+	tftp12ServerEnable();
+	//extern void testtrans();
+ 	//testtrans();
+// 	test();
 
 	char input[10];
 	while (1)
