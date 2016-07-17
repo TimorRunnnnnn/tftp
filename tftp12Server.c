@@ -224,7 +224,7 @@ void tftp12ServerServoTask(void *arg)
 		{
 			//发送错误报文
 			pktBytes = tftp12CreateERRPkt(desc, TFTP12_FILE_ALREADY_EXISTS, tftp12ErrorMsg[TFTP12_FILE_ALREADY_EXISTS]);
-			tftp12SendAndRecv(desc, desc->sendBuffer, pktBytes, &recvBytes, TRUE);
+			tftp12SendAndRecv(desc, desc->controlPktBuffer, pktBytes, &recvBytes, TRUE);
 			tftp12ServoTaskExit(node);
 		}
 
@@ -273,12 +273,14 @@ void tftp12ServerServoTask(void *arg)
 
 		while (1)
 		{
-			if (tftp12SendAndRecv(desc, desc->sendBuffer, pktBytes, &recvBytes, FALSE) != TFTP12_OK)
+			if (tftp12SendAndRecv(desc, desc->controlPktBuffer, pktBytes, &recvBytes, FALSE) != TFTP12_OK)
 			{
 				printf("\nsend and receive error");
 				break;
 			}
-			realWriteBytes = tftp12WriteNextBlock(desc->localPort, desc->recvBuffer + 4, recvBytes - 4);
+
+			/*获得下一次的接收缓冲区，赋给recvBuffer*/
+			desc->recvBuffer = tftp12WriteNextBlock(desc->localPort, desc->recvBuffer + 4, recvBytes - 4);
 			if (realWriteBytes < (recvBytes - 4))
 			{
 				printf("\nwrite error:%d", realWriteBytes);
@@ -287,7 +289,7 @@ void tftp12ServerServoTask(void *arg)
 			nextBlockNumber++;
 			if (recvBytes < (desc->option.blockSize + 4))
 			{
-				if (tftp12SendAndRecv(desc, desc->sendBuffer, pktBytes, &recvBytes, TRUE) != TFTP12_OK)
+				if (tftp12SendAndRecv(desc, desc->controlPktBuffer, pktBytes, &recvBytes, TRUE) != TFTP12_OK)
 				{
 					printf("\nsend and receive error");
 				}
@@ -306,7 +308,7 @@ void tftp12ServerServoTask(void *arg)
 		{
 			/*没有不存在，回复error*/
 			pktBytes = tftp12CreateERRPkt(desc, TFTP12_FILE_NOT_FOUND, tftp12ErrorMsg[TFTP12_FILE_NOT_FOUND]);
-			tftp12SendAndRecv(desc, desc->sendBuffer, pktBytes, &recvBytes, TRUE);
+			tftp12SendAndRecv(desc, desc->controlPktBuffer, pktBytes, &recvBytes, TRUE);
 			tftp12ServoTaskExit(node);
 		}
 
@@ -314,7 +316,7 @@ void tftp12ServerServoTask(void *arg)
 		if (_access(desc->filename, R_OK) != 0)
 		{
 			pktBytes = tftp12CreateERRPkt(desc, TFTP12_ACCESS_VIOLATION, tftp12ErrorMsg[TFTP12_ACCESS_VIOLATION]);
-			tftp12SendAndRecv(desc, desc->sendBuffer, pktBytes, &recvBytes, TRUE);
+			tftp12SendAndRecv(desc, desc->controlPktBuffer, pktBytes, &recvBytes, TRUE);
 			tftp12ServoTaskExit(node);
 		}
 
@@ -344,9 +346,11 @@ void tftp12ServerServoTask(void *arg)
 			{
 				desc->option.timeout = TFTP12_SERVER_DEFAULT_TIMEOUT;
 			}
-			desc->recvBuffer = tftp12IOBufferInit(desc->localPort, desc->option.blockSize, desc->openFile, 0, TFTP12_READ);
+			desc->dataPktBuffer = tftp12IOBufferInit(desc->localPort, desc->option.blockSize, desc->openFile, 0, TFTP12_READ);
+			desc->recvBuffer = desc->controlPktBuffer;
+			desc->recvBufferSize = sizeof(desc->controlPktBuffer);
 			pktBytes = tftp12CreateOACKPkt(desc);
-			if (tftp12SendAndRecv(desc, desc->sendBuffer, pktBytes, &recvBytes, FALSE) != TFTP12_OK)
+			if (tftp12SendAndRecv(desc, desc->controlPktBuffer, pktBytes, &recvBytes, FALSE) != TFTP12_OK)
 			{
 				printf("\nsend and receive error");
 				fclose(desc->openFile);
@@ -360,7 +364,9 @@ void tftp12ServerServoTask(void *arg)
 		{
 			desc->option.blockSize = TFTP12_BLOCKSIZE_MIN;
 			desc->option.timeout = TFTP12_SERVER_DEFAULT_TIMEOUT;
-			desc->recvBuffer = tftp12IOBufferInit(desc->localPort, desc->option.blockSize, desc->openFile, 0, TFTP12_READ);
+			desc->dataPktBuffer = tftp12IOBufferInit(desc->localPort, desc->option.blockSize, desc->openFile, 0, TFTP12_READ);
+			desc->recvBuffer = desc->controlPktBuffer;
+			desc->recvBufferSize = sizeof(desc->controlPktBuffer);
 			//desc->option.tsize=
 		}
 		//tftp12ReadNextBlock(desc->localPort,)
@@ -460,7 +466,7 @@ void tftp12ServerMainTask(void *arg)
 		}
 		memset(node, 0, sizeof(TFTP12ClientNode));
 		tftp12ClientListInsert(node);
-		memcpy(node->clientDesc.sendBuffer, recvBuff, recvBytes);
+		memcpy(node->clientDesc.controlPktBuffer, recvBuff, recvBytes);
 		memcpy(&node->clientDesc.peerAddr, &peerAddr, sizeof(peerAddr));
 
 		/*先让他等于-1，用来区分对方报文是否携带option*/

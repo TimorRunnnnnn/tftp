@@ -92,15 +92,15 @@ INT32 tftp12CreateREQPkt(TFTP12Description *pktDescriptor)
     INT32 preStringLength = 0;  /*在填充一个字段之前已填好的字段长度*/
 
     /*填充opcode:1/2*/
-    *((UINT8 *)pktDescriptor->sendBuffer) = (pktDescriptor->writeOrRead >> 8) & 0xFF;
-    *((UINT8 *)pktDescriptor->sendBuffer+1) = pktDescriptor->writeOrRead & 0xFF;
+    *((UINT8 *)pktDescriptor->controlPktBuffer) = (pktDescriptor->writeOrRead >> 8) & 0xFF;
+    *((UINT8 *)pktDescriptor->controlPktBuffer+1) = pktDescriptor->writeOrRead & 0xFF;
     preStringLength = 2;
 
     /*填充文件名*/
     if (strlen(pktDescriptor->filename) > 256)
         return -1;  /*文件名错误*/
-    strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, pktDescriptor->filename, strlen(pktDescriptor->filename));   /*填充文件名*/
-    *((UINT8 *)pktDescriptor->sendBuffer+2+strlen(pktDescriptor->filename)) = '\0';
+    strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, pktDescriptor->filename, strlen(pktDescriptor->filename));   /*填充文件名*/
+    *((UINT8 *)pktDescriptor->controlPktBuffer+2+strlen(pktDescriptor->filename)) = '\0';
 	preStringLength = preStringLength + strlen(pktDescriptor->filename) + 1;	/*更新字段长度*/
 
 	#if DEBUG
@@ -110,8 +110,8 @@ INT32 tftp12CreateREQPkt(TFTP12Description *pktDescriptor)
     /*填充模式, netascii/octet/mail*/
     if (strlen(pktDescriptor->mode) > 8)
         return -1;  /*模式错误*/
-    strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, pktDescriptor->mode, strlen(pktDescriptor->mode));   /*填充文件名*/
-    *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen(pktDescriptor->mode)) = '\0';
+    strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, pktDescriptor->mode, strlen(pktDescriptor->mode));   /*填充文件名*/
+    *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen(pktDescriptor->mode)) = '\0';
 	preStringLength = preStringLength + strlen(pktDescriptor->mode) + 1;
 
 	#if DEBUG
@@ -121,14 +121,14 @@ INT32 tftp12CreateREQPkt(TFTP12Description *pktDescriptor)
     /*填充blockSize，当选项值为0时考虑不填充还是填0，此处采用的方式为不填充*/
     if (pktDescriptor->option.blockSize > 0)
     {
-        strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, "blksize", strlen("blksize"));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen("blksize")) = '\0';
+        strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, "blksize", strlen("blksize"));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen("blksize")) = '\0';
 		preStringLength = preStringLength + strlen("blksize") + 1;
 
 		UINT8 value[10] = {0};
 		itoa(pktDescriptor->option.blockSize, value, 10);
-		strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen(value)) = '\0';
+		strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen(value)) = '\0';
 		preStringLength = preStringLength + strlen(value) + 1;
 
 		#if DEBUG
@@ -139,14 +139,14 @@ INT32 tftp12CreateREQPkt(TFTP12Description *pktDescriptor)
 	/*填充timeout，当选项值为0时考虑不填充还是填0，此处采用的方式为不填充*/
     if (pktDescriptor->option.timeout > 0)
     {
-        strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, "timeout", strlen("timeout"));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen("timeout")) = '\0';
+        strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, "timeout", strlen("timeout"));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen("timeout")) = '\0';
 		preStringLength = preStringLength + strlen("timeout") + 1;
 
 		UINT8 value[10] = {0};
 		itoa(pktDescriptor->option.timeout, value, 10);
-		strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen(value)) = '\0';
+		strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen(value)) = '\0';
 		preStringLength = preStringLength + strlen(value) + 1;
 
 		#if DEBUG
@@ -157,14 +157,14 @@ INT32 tftp12CreateREQPkt(TFTP12Description *pktDescriptor)
 	/*填充tSize，当选项值为0时考虑不填充还是填0，此处采用的方式为不填充*/
   //  if (pktDescriptor->option.tsize > 0)
     {
-        strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, "tSize", strlen("tSize"));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen("tSize")) = '\0';
+        strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, "tSize", strlen("tSize"));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen("tSize")) = '\0';
 		preStringLength = preStringLength + strlen("tSize") + 1;
 
 		UINT8 value[10] = {0};
 		itoa(pktDescriptor->option.tsize, value, 10);
-		strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen(value)) = '\0';
+		strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen(value)) = '\0';
 		preStringLength = preStringLength + strlen(value) + 1;
 
 		#if DEBUG
@@ -192,12 +192,12 @@ INT32 tftp12CreateACKPkt(TFTP12Description *pktDescriptor, INT32 blockNumber)
     UINT8 preStringLength = 0;  /*在填充一个字段之前已填好的字段长度*/
 
 	/*填充opcode:4*/
-    *((UINT8 *)pktDescriptor->sendBuffer) = 0x00;
-    *((UINT8 *)pktDescriptor->sendBuffer+1) = 0x04;
+    *((UINT8 *)pktDescriptor->controlPktBuffer) = 0x00;
+    *((UINT8 *)pktDescriptor->controlPktBuffer+1) = 0x04;
     preStringLength = 2;
 
-	*((UINT8 *)pktDescriptor->sendBuffer+preStringLength) = (blockNumber >> 8)&0xFF;
-    *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+1) = blockNumber & 0xFF;
+	*((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength) = (blockNumber >> 8)&0xFF;
+    *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+1) = blockNumber & 0xFF;
     preStringLength = 4;
 
 	return preStringLength;
@@ -220,21 +220,21 @@ INT32 tftp12CreateOACKPkt(TFTP12Description *pktDescriptor)
     UINT8 preStringLength = 0;  /*在填充一个字段之前已填好的字段长度*/
 
 	/*填充opcode:6*/
-    *((UINT8 *)pktDescriptor->sendBuffer) = 0x00;
-    *((UINT8 *)pktDescriptor->sendBuffer+1) = 0x06;
+    *((UINT8 *)pktDescriptor->controlPktBuffer) = 0x00;
+    *((UINT8 *)pktDescriptor->controlPktBuffer+1) = 0x06;
     preStringLength = 2;
 
     /*填充blockSize，当选项值为0时考虑不填充还是填0，此处采用的方式为不填充*/
     if (pktDescriptor->option.blockSize > 0)
     {
-        strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, "blksize", strlen("blksize"));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen("blksize")) = '\0';
+        strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, "blksize", strlen("blksize"));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen("blksize")) = '\0';
 		preStringLength = preStringLength + strlen("blksize") + 1;
 
 		UINT8 value[10] = {0};
 		itoa(pktDescriptor->option.blockSize, value, 10);
-		strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen(value)) = '\0';
+		strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen(value)) = '\0';
 		preStringLength = preStringLength + strlen(value) + 1;
 
 		#if DEBUG
@@ -245,14 +245,14 @@ INT32 tftp12CreateOACKPkt(TFTP12Description *pktDescriptor)
 	/*填充timeout，当选项值为0时考虑不填充还是填0，此处采用的方式为不填充*/
     if (pktDescriptor->option.timeout > 0)
     {
-        strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, "timeout", strlen("timeout"));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen("timeout")) = '\0';
+        strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, "timeout", strlen("timeout"));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen("timeout")) = '\0';
 		preStringLength = preStringLength + strlen("timeout") + 1;
 
 		UINT8 value[10] = {0};
 		itoa(pktDescriptor->option.timeout, value, 10);
-		strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen(value)) = '\0';
+		strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen(value)) = '\0';
 		preStringLength = preStringLength + strlen(value) + 1;
 
 		#if DEBUG
@@ -263,14 +263,14 @@ INT32 tftp12CreateOACKPkt(TFTP12Description *pktDescriptor)
 	/*填充tSize，当选项值为0时考虑不填充还是填0，此处采用的方式为不填充*/
     if (pktDescriptor->option.tsize > 0)
     {
-        strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, "tSize", strlen("tSize"));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen("tSize")) = '\0';
+        strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, "tSize", strlen("tSize"));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen("tSize")) = '\0';
 		preStringLength = preStringLength + strlen("tSize") + 1;
 
 		UINT8 value[10] = {0};
 		itoa(pktDescriptor->option.tsize, value, 10);
-		strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen(value)) = '\0';
+		strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, value, strlen(value));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen(value)) = '\0';
 		preStringLength = preStringLength + strlen(value) + 1;
 
 		#if DEBUG
@@ -299,14 +299,14 @@ INT32 tftp12CreateERRPkt(TFTP12Description *pktDescriptor, INT16 errorCode, UINT
     UINT8 preStringLength = 0;  /*在填充一个字段之前已填好的字段长度*/
 
 	/*填充opcode:5*/
-    *((UINT8 *)pktDescriptor->sendBuffer) = 0x00;
-    *((UINT8 *)pktDescriptor->sendBuffer+1) = 0x05;
+    *((UINT8 *)pktDescriptor->controlPktBuffer) = 0x00;
+    *((UINT8 *)pktDescriptor->controlPktBuffer+1) = 0x05;
     preStringLength = 2;
 
     /*填充errCode:0-7*/
     {
-		*((UINT8 *)pktDescriptor->sendBuffer+preStringLength) = (errorCode >> 8) & 0xFF;
-		*((UINT8 *)pktDescriptor->sendBuffer+preStringLength+1) = errorCode & 0xFF;
+		*((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength) = (errorCode >> 8) & 0xFF;
+		*((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+1) = errorCode & 0xFF;
 		preStringLength = 4;
 
 		#if DEBUG
@@ -316,8 +316,8 @@ INT32 tftp12CreateERRPkt(TFTP12Description *pktDescriptor, INT16 errorCode, UINT
 
 	/*填充errorMsg*/
     {
-        strncpy((UINT8 *)pktDescriptor->sendBuffer+preStringLength, errorMsg, strlen(errorMsg));   /*填充文件名*/
-        *((UINT8 *)pktDescriptor->sendBuffer+preStringLength+strlen(errorMsg)) = '\0';
+        strncpy((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength, errorMsg, strlen(errorMsg));   /*填充文件名*/
+        *((UINT8 *)pktDescriptor->controlPktBuffer+preStringLength+strlen(errorMsg)) = '\0';
 		preStringLength = preStringLength + strlen(errorMsg) + 1;
 
 		#if DEBUG
@@ -368,15 +368,15 @@ INT32 tftp12ParseREQPkt(TFTP12Description *pktDescriptor)
 	INT32 preStringLength = 2;
 
     /*提取opcode,服务器根据此值取反,R->W,W->R*/
-    pktDescriptor->writeOrRead = *((UINT8 *)pktDescriptor->sendBuffer);
-    pktDescriptor->writeOrRead = (pktDescriptor->writeOrRead << 8) ^ *((UINT8 *)pktDescriptor->sendBuffer+1);
+    pktDescriptor->writeOrRead = *((UINT8 *)pktDescriptor->controlPktBuffer);
+    pktDescriptor->writeOrRead = (pktDescriptor->writeOrRead << 8) ^ *((UINT8 *)pktDescriptor->controlPktBuffer+1);
 
 	#if DEBUG
 	printf("tftp12ParseREQPkt提取到的opCode=%d\n", pktDescriptor->writeOrRead);
 	#endif
 
 	/*提取fileName,考虑到操作系统对大小写敏感性,文件名未进行大小写转换*/
-	currentString = (UINT8 *)pktDescriptor->sendBuffer + preStringLength;
+	currentString = (UINT8 *)pktDescriptor->controlPktBuffer + preStringLength;
 
     #if DEBUG
 	printf("tftp12ParseREQPkt提取到的currentString=%s\n", currentString);
@@ -477,11 +477,11 @@ INT16 tftp12ParseACKPkt(TFTP12Description *pktDescriptor)
     INT16 blockNumber = 0;  /*在填充一个字段之前已填好的字段长度*/
 
 	/*提取opcode*/
-    blockNumber = *((UINT8 *)pktDescriptor->sendBuffer+2);
-    blockNumber = (blockNumber << 8) ^ *((UINT8 *)pktDescriptor->sendBuffer+3);
+    blockNumber = *((UINT8 *)pktDescriptor->controlPktBuffer+2);
+    blockNumber = (blockNumber << 8) ^ *((UINT8 *)pktDescriptor->controlPktBuffer+3);
 
 	#if DEBUG
-	printf("tftp12ParseACKPkt收到的大端十六进制blockNumber=%s\n", (UINT8 *)pktDescriptor->sendBuffer+2);
+	printf("tftp12ParseACKPkt收到的大端十六进制blockNumber=%s\n", (UINT8 *)pktDescriptor->controlPktBuffer+2);
 	#endif
 
 	return blockNumber;
@@ -512,7 +512,7 @@ INT32 tftp12ParseOACKPkt(TFTP12Description *pktDescriptor)
     *((UINT8 *)pktDescriptor->buffer+1);
 	#endif
 
-	currentString = (UINT8 *)pktDescriptor->sendBuffer;
+	currentString = (UINT8 *)pktDescriptor->controlPktBuffer;
 	currentString = currentString + 2;	/*跳过opcode*/
 
 	/*协商option过程中,收到对方的OACK数据包后更新值,更新前先清0*/
@@ -583,16 +583,16 @@ packet format:
 INT32 tftp12ParseERRPkt(TFTP12Description *pktDescriptor, INT16 errorCode, UINT8 *errorMsg)
 {
 	/*提取errCode*/
-    errorCode = *((UINT8 *)pktDescriptor->sendBuffer+2);
-    errorCode = (errorCode << 8) ^ *((UINT8 *)pktDescriptor->sendBuffer+3);
+    errorCode = *((UINT8 *)pktDescriptor->controlPktBuffer+2);
+    errorCode = (errorCode << 8) ^ *((UINT8 *)pktDescriptor->controlPktBuffer+3);
 
 	/*提取errorMsg*/
     {
-        strncpy((UINT8 *)errorMsg, (UINT8 *)pktDescriptor->sendBuffer+4, strlen((UINT8 *)pktDescriptor->sendBuffer+4));   /*这里可以不用拷贝的？*/
-        *(errorMsg+strlen((UINT8 *)pktDescriptor->sendBuffer+4)) = '\0';
+        strncpy((UINT8 *)errorMsg, (UINT8 *)pktDescriptor->controlPktBuffer+4, strlen((UINT8 *)pktDescriptor->controlPktBuffer+4));   /*这里可以不用拷贝的？*/
+        *(errorMsg+strlen((UINT8 *)pktDescriptor->controlPktBuffer+4)) = '\0';
 
 		#if DEBUG
-		printf("tftp12ParseERRPkt提取的(UINT8 *)pktDescriptor->buffer+4为：%s\n", (UINT8 *)pktDescriptor->sendBuffer+4);
+		printf("tftp12ParseERRPkt提取的(UINT8 *)pktDescriptor->buffer+4为：%s\n", (UINT8 *)pktDescriptor->controlPktBuffer+4);
 		printf("tftp12ParseERRPkt提取的errorMsg为：%s\n", errorMsg);
 		#endif
     }
@@ -648,7 +648,7 @@ int main1()
     TFTP12Description session;
   //  newSession.buffer = malloc(600);
   //  session.buffer = malloc(1000);
-    memset(session.sendBuffer, 0, 256);
+    memset(session.controlPktBuffer, 0, 256);
     newSession.filename = (UINT8 *)malloc(256);
     memset(newSession.filename, 0, 256);
     strcpy(newSession.filename, "test_parse.a");
@@ -661,10 +661,10 @@ int main1()
     INT32 count = tftp12CreateREQPkt(&newSession);
 
     printf("count=%d\n", count);
-    memcpy(session.sendBuffer, newSession.sendBuffer, 600);
+    memcpy(session.controlPktBuffer, newSession.controlPktBuffer, 600);
     //session.buffer = newSession.buffer;
 
-    printf("session.buffer=%s\n", (UINT8 *)session.sendBuffer+2);
+    printf("session.buffer=%s\n", (UINT8 *)session.controlPktBuffer+2);
     tftp12ParseREQPkt(&session);
     printf("session.opcode=%d\n", session.writeOrRead);
     printf("session.filename=%s\n", session.filename);

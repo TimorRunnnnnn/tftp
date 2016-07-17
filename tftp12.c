@@ -93,106 +93,106 @@ INT32 tftpReadFrom(FILE *file, TFTP12Description *request)
 
 INT32 test()
 {
-	TFTP12Description testDesc;
+// 	TFTP12Description testDesc;
+// // 
+// // 	FILE *fd = fopen("test.txt", "w+");
+// // 	char a[20];
+// // 	for (INT32 i = 0; i < (1000000 / 500); i++)
+// // 	{
+// // 		for (int j = 0; j < 500; j++)
+// // 		{
+// // 			// 			_itoa(i, a, 10);
+// // 			// 			fwrite(a, strlen(a), 1, fd);
+// // 			fprintf(fd, "1", i % 10);
+// // 		}
+// // 	}
+// // //	fprintf(fd, "123456");
+// // 	fclose(fd);
 // 
-// 	FILE *fd = fopen("test.txt", "w+");
-// 	char a[20];
-// 	for (INT32 i = 0; i < (1000000 / 500); i++)
+// 
+// 	memset(&testDesc, 0, sizeof(testDesc));
+// 
+// 	testDesc.option.blockSize = 8192;
+// 	testDesc.option.timeout = 10;
+// 	testDesc.option.tsize = 10000;
+// 	testDesc.filename = "testfilename";
+// 	testDesc.recvBuffer = malloc(TFTP12_BUFFER_SIZE(&testDesc));
+// 	testDesc.writeOrRead = TFTP12_OPCODE_READ_REQUEST;
+// 	//testDesc.openFile = 123;
+// 	testDesc.mode = "ocete";
+// 	//tftp12CreateRequestPkt(&testDesc);
+// 
+// 	FILE *tFile = fopen("test.txt", "r");
+// 
+// // 	char *rea = malloc(5000000);
+// // 	INT32 x = fread(rea, 1, 5000000, tFile);
+// // 	for (INT32 i=0;i<x;i++)
+// // 	{
+// // 		if (rea[i]!='1')
+// // 		{
+// // 			printf("error");
+// // 		}
+// // 	}
+// 
+// 	FILE *wFile = fopen("test_copy.txt", "w+");
+// #define BLKSIZE 500
+// 
+// 	if (tFile != NULL)
 // 	{
-// 		for (int j = 0; j < 500; j++)
+// 		fseek(tFile, 0L, SEEK_END);
+// 		INT32 size = ftell(tFile);
+// 		fseek(tFile, 0, SEEK_SET);
+// 		tftp12IOBufferInit(1, BLKSIZE, tFile, size, TFTP12_READ);
+// 		tftp12IOBufferInit(2, BLKSIZE, wFile, size, TFTP12_WRITE);
+// 		INT32 rsize = 0;
+// 
+// 		//while (1)
 // 		{
-// 			// 			_itoa(i, a, 10);
-// 			// 			fwrite(a, strlen(a), 1, fd);
-// 			fprintf(fd, "1", i % 10);
+// // 			extern INT32 testNum, testNum2;
+// // 			testNum = 0;
+// // 			testNum2 = 0;
+// // 
+// // 			fseek(tFile, 0, SEEK_SET);
+// // 			tftp12IOBufferFree(1);
+// // 			tftp12IOBufferInit(1, 500, tFile, size, TFTP12_READ);
+// // 			while (1)
+// // 			{
+// // 				char *tem = tftp12ReadNextBlock(1, &rsize);
+// // // 				for (INT32 i = 0; i < (rsize-1); i++)
+// // // 				{
+// // // // 					if ((*tem) != (*(tem + i))&&((*(tem+i-1)) != (*(tem + i))+1))
+// // // // 					{
+// // // // 						printf("\n´íÎó,%c -- %c", *tem, *(tem + i));
+// // // // 						//break;
+// // // // 					}
+// // // 				}
+// // 				if (tftp12WriteNextBlock(2, tem, rsize) != rsize)
+// // 				{
+// // 					printf("error");
+// // 				}
+// // 				for (INT32 i = 0; i < rsize; i++)
+// // 				{
+// // 					*(tem + i) = 0;
+// // 				}
+// // 				if (rsize < BLKSIZE)
+// // 				{
+// // 					printf("\nfinish\n\n\n");
+// // 					break;
+// // 				}
+// // 				
+// // 			}
+// 			//Sleep(100);
 // 		}
 // 	}
-// //	fprintf(fd, "123456");
-// 	fclose(fd);
-
-
-	memset(&testDesc, 0, sizeof(testDesc));
-
-	testDesc.option.blockSize = 8192;
-	testDesc.option.timeout = 10;
-	testDesc.option.tsize = 10000;
-	testDesc.filename = "testfilename";
-	testDesc.recvBuffer = malloc(TFTP12_BUFFER_SIZE(&testDesc));
-	testDesc.writeOrRead = TFTP12_OPCODE_READ_REQUEST;
-	//testDesc.openFile = 123;
-	testDesc.mode = "ocete";
-	//tftp12CreateRequestPkt(&testDesc);
-
-	FILE *tFile = fopen("test.txt", "r");
-
-// 	char *rea = malloc(5000000);
-// 	INT32 x = fread(rea, 1, 5000000, tFile);
-// 	for (INT32 i=0;i<x;i++)
-// 	{
-// 		if (rea[i]!='1')
-// 		{
-// 			printf("error");
-// 		}
-// 	}
-
-	FILE *wFile = fopen("test_copy.txt", "w+");
-#define BLKSIZE 500
-
-	if (tFile != NULL)
-	{
-		fseek(tFile, 0L, SEEK_END);
-		INT32 size = ftell(tFile);
-		fseek(tFile, 0, SEEK_SET);
-		tftp12IOBufferInit(1, BLKSIZE, tFile, size, TFTP12_READ);
-		tftp12IOBufferInit(2, BLKSIZE, wFile, size, TFTP12_WRITE);
-		INT32 rsize = 0;
-
-		//while (1)
-		{
-// 			extern INT32 testNum, testNum2;
-// 			testNum = 0;
-// 			testNum2 = 0;
-// 
-// 			fseek(tFile, 0, SEEK_SET);
-// 			tftp12IOBufferFree(1);
-// 			tftp12IOBufferInit(1, 500, tFile, size, TFTP12_READ);
-			while (1)
-			{
-				char *tem = tftp12ReadNextBlock(1, &rsize);
-// 				for (INT32 i = 0; i < (rsize-1); i++)
-// 				{
-// // 					if ((*tem) != (*(tem + i))&&((*(tem+i-1)) != (*(tem + i))+1))
-// // 					{
-// // 						printf("\n´íÎó,%c -- %c", *tem, *(tem + i));
-// // 						//break;
-// // 					}
-// 				}
-				if (tftp12WriteNextBlock(2, tem, rsize) != rsize)
-				{
-					printf("error");
-				}
-				for (INT32 i = 0; i < rsize; i++)
-				{
-					*(tem + i) = 0;
-				}
-				if (rsize < BLKSIZE)
-				{
-					printf("\nfinish\n\n\n");
-					break;
-				}
-				
-			}
-			//Sleep(100);
-		}
-	}
-	tftp12IOBufferFree(1);
-	tftp12IOBufferFree(2);
- 	fclose(wFile);
- 	fclose(tFile);
+// 	tftp12IOBufferFree(1);
+// 	tftp12IOBufferFree(2);
+//  	fclose(wFile);
+//  	fclose(tFile);
 
 
 	//tftp12ExtractOption(testDesc.sendBuffer, 512, &testDesc.option);
 	// 	tftp12ExtractOption("timeout\0123\0blksize\01x34\0tsize\0111\0", &testDesc.option);
 	// 	tftp12ExtractOption("blksize\01234\0timeout\0123\0tsize\0111\0", &testDesc.option);
-	return 1;
+//	return 1;
 }
 
