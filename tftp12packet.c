@@ -10,11 +10,11 @@
 #define STR_TIMEOUT		"timeout"
 #define STR_TSIZE		"tsize"
 
-const char *tftp12ConstStrTransMode[2] = {
+static const char *tftp12ConstStrTransMode[2] = {
 	"netascii",
 	"octet",
 };
-const char *tftp12ConstStrOption[3] = {
+static const char *tftp12ConstStrOption[3] = {
 	STR_BLKSIZE,STR_TIMEOUT,STR_TSIZE
 };
 

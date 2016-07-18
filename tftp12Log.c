@@ -37,26 +37,37 @@ void tftp12LogInit(void)
 	}
 }
 
-void tftp12ClientLogMsg(char *format,...)
+
+static void tftp12LogMsgMain(FILE *file, char *format, ...)
 {
 	char msg[TFTP12_MAX_LOGMSG_SIZE];
 	INT32 msgLen = 0;
 	va_list ap;
 
+	/*添加一个终止符，防止访问越界，比内存清零快*/
+	msg[TFTP12_MAX_LOGMSG_SIZE - 1] = '\0';
 	va_start(ap, format);
 	_vsnprintf(msg, TFTP12_MAX_LOGMSG_SIZE, format, ap);
 	msgLen = strlen(msg);
 	msg[msgLen] = '\n';
 	msg[msgLen + 1] = '\0';
-	if (tftp12ClinetLogEnable==TRUE)
-	{
-		//添加时间戳
-		fputs(msg, clientLogFile);
-		fflush(clientLogFile);
-	}
+
+	//添加时间戳
+	fputs(msg, file);
+	fflush(file);
 	va_end(ap);
 	return;
 }
+
+void tftp12ClientLogMsg(char *format, ...)
+{
+	if (tftp12ClinetLogEnable == TRUE)
+	{
+		//tftp12LogMsgMain()
+	}
+}
+
+
 
 void tftp12ServerLogMsg(char *format, ...)
 {
@@ -64,6 +75,8 @@ void tftp12ServerLogMsg(char *format, ...)
 	INT32 msgLen = 0;
 	va_list ap;
 
+	/*添加一个终止符，防止访问越界，比内存清零快*/
+	msg[TFTP12_MAX_LOGMSG_SIZE - 1] = '\0';
 	va_start(ap, format);
 	_vsnprintf(msg, TFTP12_MAX_LOGMSG_SIZE, format, ap);
 	msgLen = strlen(msg);

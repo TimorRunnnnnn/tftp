@@ -12,6 +12,7 @@
 #include "tftp12header.h"
 #include "tftp12IObuffer.h"
 #include "tftp12Log.h"
+#include "tftp12Server.h"
 
 #define R_OK 4 /* Test for read permission. */
 #define W_OK 2 /* Test for write permission. */
@@ -20,6 +21,7 @@
 
 #define TFTP12_DEFAULT_BLOCKSIZE			(512)
 
+#define TFTP12_SERVER_DEFAULE_USERNUM		(2)
 #define TFTP12_SERVER_DEFAULT_TIMEOUT		(3)
 #define TFTP12_SERVER_DEFAULT_RETRANSMIT	(3)
 #define TFTP12_SERVER_DEFAULT_BIND_PORT		(69)
@@ -30,29 +32,6 @@
 
 #define FOEVER								for(;;)
 
-#define FREE_Z(m)	{\
-						if(m!=NULL)		\
-						{				\
-							free(m);	\
-							m=NULL;		\
-						}				\
-					}				
-
-#define FCLOSE_Z(f)	{\
-						if(f!=NULL)		\
-						{				\
-							fclose(f);	\
-							f=NULL;		\
-						}				\
-					}		
-
-#define SCLOSE_Z(s)	{\
-						if(s!=0)		\
-						{				\
-							closesocket(s);	\
-							s=0;		\
-						}				\
-					}				
 
 char * const tftp12ErrorMsg[] = {
 	"Not Defined",
@@ -79,12 +58,15 @@ typedef struct
 
 typedef struct _tftp12serverinfo
 {
-	HANDLE clientListMutex;
-
+	/*需要用互斥信号量保护起来*/
+	INT32 serverTaskID;
 	INT32 sock;
 	struct sockaddr_in serverAddr;
+	INT32 serverPort;
+	INT32 tftpServerIsRunning;
 	INT32 defaultTimeout;
 	INT32 reTransmitTimes;
+	INT32 maxUser;
 	TFTP12ClientList clientList;
 }TFTP12ServerInfo;
 
@@ -93,7 +75,8 @@ static TFTP12ServerInfo tftp12ServerInfo;
 #define  tftp12ServoTaskExit(node)	{\
 			printf("\ntask exit, port:%d",node->clientDesc.localPort);\
 				\
-			FCLOSE_Z(node->clientDesc.openFile)\
+			tftp12WaitIOFinishById(node->clientDesc.localPort);\
+			FCLOSE_Z(node->clientDesc.openFile);\
 			SCLOSE_Z(node->clientDesc.sock);\
 			tftp12IOBufferFree(node->clientDesc.localPort);\
 			tftp12ClientListDelete(node);\
@@ -104,6 +87,179 @@ static TFTP12ServerInfo tftp12ServerInfo;
 }
 
 
+INT32 tftp12ServerEnable();
+INT32 tftp12ServerDisable();
+
+/*设置在没有option时候的超时时间*/
+void tftp12ServerSetTimeout(INT32 time)
+{
+	tftp12ServerInfo.defaultTimeout = time;
+}
+
+/*设置重传次数*/
+void tftp12ServerSetRetransmit(INT32 times)
+{
+	tftp12ServerInfo.reTransmitTimes = times;
+}
+/*设置服务器的绑定端口*/
+void tftp12ServerSetPort(UINT16 port)
+{
+	tftp12ServerInfo.serverPort = port;
+}
+
+/*show当前的连接*/
+void tftp12ServerShowStatus(void)
+{
+	TFTP12ClientNode *pWalk=NULL;
+	char numBuf[11];/*用来保存itoa的数组*/
+	char percentBuf[11];/*用来保存百分比的数组*/
+	float percent = 0;
+	printf("\nTFTP12 Status:%s", (tftp12ServerInfo.tftpServerIsRunning == TRUE ? "Enable" : "Disable"));
+	printf("\nServer port: %d", tftp12ServerInfo.serverPort);
+	printf("\nTimeout: %d", tftp12ServerInfo.defaultTimeout);
+	printf("\nRetransmissions: %d", tftp12ServerInfo.reTransmitTimes);
+	printf("\nMax user number: %d", tftp12ServerInfo.maxUser);
+
+	if (tftp12ServerInfo.tftpServerIsRunning == TRUE)
+	{
+		printf("\nCurrent transmissions: %d",tftp12ServerInfo.clientList.count);
+		pWalk = tftp12ServerInfo.clientList.head;
+		while (pWalk != NULL)
+		{
+			if (pWalk->clientDesc.option.tsize > 0)
+			{
+				sprintf(percentBuf, "[%2.1f%%]", ((pWalk->clientDesc.transmitBytes*100.0) / (float)pWalk->clientDesc.option.tsize));
+			}
+			else
+			{
+				percentBuf[0] = '\0';
+				percentBuf[1] = '\0';
+			}
+			printf("\n       IP           Port(L/R)        Progress(total)         blksize/timeout");
+			printf("\n%s    %d/%d     %d k(%s k)%s      %d/%d", inet_ntoa(pWalk->clientDesc.peerAddr.sin_addr), \
+				pWalk->clientDesc.localPort,pWalk->clientDesc.peerAddr.sin_port,pWalk->clientDesc.transmitBytes/1000, \
+				((pWalk->clientDesc.option.tsize > 0) ? (_itoa(pWalk->clientDesc.option.tsize/1000, numBuf, 10)) : ("Unknow")), \
+				percentBuf,	pWalk->clientDesc.option.blockSize, pWalk->clientDesc.option.timeout);
+			pWalk = pWalk->next;
+		}
+	}
+}
+
+/*设置最大并发数量*/
+void tftp12ServerSetMaxuser(INT32 userNum)
+{
+	tftp12ServerInfo.maxUser = userNum;
+}
+
+/*强制断开一个用户的连接*/
+void tftp12ServerForceStop(UINT32 ip)
+{
+	struct in_addr in;
+	in.S_un.S_addr = ip;
+	printf("\nforce stop: %s", inet_ntoa(in));
+}
+
+INT32 tftp12ParseCommand(INT8 *command)
+{
+	/*未考虑路径中包含空格的情况，C:\Program Files*/
+	INT32 argc = 0;
+	INT8 **argv;
+	INT32 preStringLength = 0;
+	INT8 *pos;
+	pos = strtok(command, " ");
+	while (pos)
+	{
+		++argc;
+		pos = strtok(NULL, " ");
+	}
+	argv = (INT8 *)malloc(argc * sizeof(int));
+	if (*argv == NULL)
+	{
+		printf("堆申请失败！\n");
+		return 1;
+	}
+
+	INT8 newPos = 0;
+	INT32 argcBk = argc;
+	while (argc > 0)
+	{
+		*(argv + newPos) = command + preStringLength;
+		preStringLength += strlen(command + preStringLength) + 1;
+		++newPos;
+		--argc;
+	}
+	tftp12SeverShellCallback(argc, argv);
+	return 0;
+}
+
+/*
+tftp12Server Enable						//Enable TFTP12 Server
+tftp12Server Disable					//Disable TFTP12 Server
+tftp12Server SetMaxUser 1-20			//Set the maximum number of concurrent users
+tftp12Server SetServerPort 1-65535		//Set the server listen port
+tftp12Server SetRetransmitTimes			//Set the number of retransmissions
+tftp12Server SetTimeout 1-255			//Set the timeout time
+tftp12Server ForceStop					//Force disconnect by ip
+*/
+void tftp12SeverShellCallback(INT32 argc, INT8 *argv[])
+{
+	if (strcmp(argv[0], "tftp12Server") == 0)
+	{
+		if (strcmp(argv[1], "Enable") == 0)
+		{
+			tftp12ServerEnable();
+			return;
+		}
+		else if (strcmp(argv[1], "Disable") == 0)
+		{
+			tftp12ServerDisable();
+			return;
+		}
+		else if (strcmp(argv[1], "SetMaxUser") == 0)
+		{
+			tftp12ServerSetMaxuser(atoi(argv[2]));
+			return;
+		}
+		else if (strcmp(argv[1], "SetServerPort") == 0)
+		{
+			tftp12ServerSetPort(atoi(argv[2]));
+			return;
+		}
+		else if (strcmp(argv[1], "SetTimeout") == 0)
+		{
+			tftp12ServerSetTimeout(atoi(argv[2]));
+			return;
+		}
+		else if (strcmp(argv[1], "ForceStop") == 0)
+		{
+			tftp12ServerForceStop(inet_addr(argv[2]));
+			return;
+		}
+	}
+	else if (strcmp(argv[0], "no") == 0)
+	{
+		if (strcmp(argv[1], "tftp12Server") == 0)
+		{
+			if (strcmp(argv[2], "Enable") == 0)
+			{
+				tftp12ServerDisable();
+				return;
+			}
+		}
+	}
+
+	printf("\nTFTP12:undefined command");
+}
+
+void tftp12ServerInit(void)
+{
+	memset(&tftp12ServerInfo, 0, sizeof(tftp12ServerInfo));
+	tftp12ServerInfo.serverPort = TFTP12_SERVER_DEFAULT_BIND_PORT;
+	tftp12ServerInfo.defaultTimeout = TFTP12_SERVER_DEFAULT_TIMEOUT;
+	tftp12ServerInfo.reTransmitTimes = TFTP12_SERVER_DEFAULT_RETRANSMIT;
+	tftp12ServerInfo.maxUser = TFTP12_SERVER_DEFAULE_USERNUM;
+	return;
+}
 
 static void tftp12ClientListInsert(TFTP12ClientNode *node)
 {
@@ -144,11 +300,12 @@ static void tftp12ClientListDelete(TFTP12ClientNode *node)
 
 void tftp12ServerServoTask(void *arg)
 {
+	char oackTemBuffer[TFTP12_DEFAULT_BLOCKSIZE];		/*临时用一个，size只需要大于512就可以了*/
 	INT32 pktBytes = 0;				/*发送报文长度*/
 	INT32 realWriteBytes = 0;		/*单次写入的字节数*/
 	INT32 realReadBytes = 0;		/*单次读出的字节数*/
 	INT32 recvBytes = 0;			/*单次报文接收的字节数*/
-	INT32 nextBlockNumber = 0;		/*下一块数据的编号*/
+	UINT16 nextBlockNumber = 0;		/*下一块数据的编号*/
 	INT32 totalTransBytes = 0;			/*一共传输的字节数*/
 	TFTP12ClientNode *node = arg;
 	TFTP12Description *desc = NULL;
@@ -219,14 +376,14 @@ void tftp12ServerServoTask(void *arg)
 	/*如果客户端发过来的是PUT（WRITE）*/
 	if (desc->writeOrRead == TFTP12_WRITE)
 	{
-		/*测试文件是否存在*/
-		if (_access(desc->filename, 0) == 0)
-		{
-			//发送错误报文
-			pktBytes = tftp12CreateERRPkt(desc, TFTP12_FILE_ALREADY_EXISTS, tftp12ErrorMsg[TFTP12_FILE_ALREADY_EXISTS]);
-			tftp12SendAndRecv(desc, desc->controlPktBuffer, pktBytes, &recvBytes, TRUE);
-			tftp12ServoTaskExit(node);
-		}
+		// 		/*测试文件是否存在*/
+		// 		if (_access(desc->filename, 0) == 0)
+		// 		{
+		// 			//发送错误报文
+		// 			pktBytes = tftp12CreateERRPkt(desc, TFTP12_FILE_ALREADY_EXISTS, tftp12ErrorMsg[TFTP12_FILE_ALREADY_EXISTS]);
+		// 			tftp12SendAndRecv(desc, desc->controlPktBuffer, pktBytes, &recvBytes, TRUE);
+		// 			tftp12ServoTaskExit(node);
+		// 		}
 
 		desc->openFile = fopen(desc->filename, "wb+");
 		if (desc->openFile == NULL)
@@ -247,8 +404,10 @@ void tftp12ServerServoTask(void *arg)
 		{
 			desc->option.timeout = tftp12ServerInfo.defaultTimeout;
 			pktBytes = tftp12CreateACKPkt(&(node->clientDesc), 0);
-			nextBlockNumber = 1;
 		}
+
+		/*接收的时候第一个数据报文的number是1*/
+		nextBlockNumber = 1;
 
 		/*如果没有option，使用默认的值*/
 		if (desc->option.blockSize == TFTP12_SERVER_OPTION_INIT)
@@ -268,24 +427,30 @@ void tftp12ServerServoTask(void *arg)
 			desc->writeOrRead)) == NULL)
 		{
 			printf("\nio buffer alloc failed!");
-			return;
+		//	FCLOSE_Z(desc->openFile);
+			tftp12ServoTaskExit(node);
 		}
-
+		desc->recvBufferSize = TFTP12_IO_BUFFERSIZE(desc->option.blockSize);
 		while (1)
 		{
 			if (tftp12SendAndRecv(desc, desc->controlPktBuffer, pktBytes, &recvBytes, FALSE) != TFTP12_OK)
 			{
 				printf("\nsend and receive error");
-				break;
+			//	FCLOSE_Z(desc->openFile);
+				tftp12ServoTaskExit(node);
 			}
 
 			/*获得下一次的接收缓冲区，赋给recvBuffer*/
 			desc->recvBuffer = tftp12WriteNextBlock(desc->localPort, desc->recvBuffer + 4, recvBytes - 4);
-			if (realWriteBytes < (recvBytes - 4))
-			{
-				printf("\nwrite error:%d", realWriteBytes);
-			}
-			tftp12CreateACKPkt(&(node->clientDesc), nextBlockNumber);
+
+			// 			static INT32 toal = 0;
+			// 			toal += recvBytes - 4;
+			// 			printf("\nrec:%d,to:%d", recvBytes - 4, toal);
+
+			/*保存传输了多少字节*/
+			desc->transmitBytes += recvBytes - 4;
+
+			pktBytes = tftp12CreateACKPkt(&(node->clientDesc), nextBlockNumber);
 			nextBlockNumber++;
 			if (recvBytes < (desc->option.blockSize + 4))
 			{
@@ -297,6 +462,8 @@ void tftp12ServerServoTask(void *arg)
 				break;
 			}
 		}
+		/*这里需要等待iobuffer的写入操作结束*/
+		//tftp12WaitIOFinishById(desc->localPort);
 		//FCLOSE_Z(desc->openFile);
 		tftp12ServoTaskExit(node);
 		//	printf("\nreceive finish:%d", toalWrite);
@@ -347,18 +514,26 @@ void tftp12ServerServoTask(void *arg)
 				desc->option.timeout = TFTP12_SERVER_DEFAULT_TIMEOUT;
 			}
 			desc->dataPktBuffer = tftp12IOBufferInit(desc->localPort, desc->option.blockSize, desc->openFile, 0, TFTP12_READ);
-			desc->recvBuffer = desc->controlPktBuffer;
-			desc->recvBufferSize = sizeof(desc->controlPktBuffer);
+			if (desc->dataPktBuffer == NULL)
+			{
+				printf("\nIObuffer Init Failed!");
+				//FCLOSE_Z(node->clientDesc.openFile);
+				tftp12ServoTaskExit(node);
+			}
+			desc->recvBuffer = oackTemBuffer;
+			desc->recvBufferSize = TFTP12_DEFAULT_BLOCKSIZE;
 			pktBytes = tftp12CreateOACKPkt(desc);
 			if (tftp12SendAndRecv(desc, desc->controlPktBuffer, pktBytes, &recvBytes, FALSE) != TFTP12_OK)
 			{
 				printf("\nsend and receive error");
-				fclose(desc->openFile);
 				tftp12ServoTaskExit(node);
 			}
 
+			/*改回控制报文的buffe*/
+			desc->recvBuffer = desc->controlPktBuffer;
+			desc->recvBufferSize = sizeof(desc->controlPktBuffer);
+
 			/*如果收到了ACk，那发送的数据块编号应该为1*/
-			nextBlockNumber = 1;
 		}
 		else
 		{
@@ -370,22 +545,25 @@ void tftp12ServerServoTask(void *arg)
 			//desc->option.tsize=
 		}
 		//tftp12ReadNextBlock(desc->localPort,)
-
+		nextBlockNumber = 1;
 		if (desc->recvBuffer == NULL)
 		{
 			printf("\nIO buffer init failed");
-			fclose(desc->openFile);
+			//FCLOSE_Z(node->clientDesc.openFile);
 			tftp12ServoTaskExit(node);
 		}
+
+		char *sendData = NULL;
 		while (1)
 		{
-			char *sendData = tftp12ReadNextBlock(desc->localPort, &realReadBytes);
+			sendData = tftp12ReadNextBlock(desc->localPort, &realReadBytes);
 			if (sendData == NULL)
 			{
 				printf("\nfile read failed");
-				fclose(desc->openFile);
+				//FCLOSE_Z(node->clientDesc.openFile);
 				tftp12ServoTaskExit(node);
 			}
+			desc->transmitBytes += realReadBytes;
 
 			/*数据包的大小为读取的字节数加上data报文头部4个字节*/
 			pktBytes = realReadBytes + 4;
@@ -393,33 +571,51 @@ void tftp12ServerServoTask(void *arg)
 			if (tftp12SendAndRecv(desc, sendData, pktBytes, &recvBytes, FALSE) != TFTP12_OK)
 			{
 				printf("\nsend and receive error");
-				fclose(desc->openFile);
+				//FCLOSE_Z(node->clientDesc.openFile);
 				tftp12ServoTaskExit(node);
 			}
 			nextBlockNumber++;
+			// 			if (nextBlockNumber==0)
+			// 			{
+			// 				nextBlockNumber = 1;
+			// 			}
 
-			/*如果读出的字节数小于一个blocksiz，表示发送完成，退出*/
+						/*如果读出的字节数小于一个blocksiz，表示发送完成，退出*/
 			if (realReadBytes < desc->option.blockSize)
 			{
 				printf("\nsend finish");
-				fclose(desc->openFile);
+				//FCLOSE_Z(node->clientDesc.openFile);
 				tftp12ServoTaskExit(node);
+				需要检查收到的bytes和tsize是否一致
 			}
 		}
-		
+
 	}
 }
 
 void tftp12ServerMainTask(void *arg)
 {
 	char recvBuff[TFTP12_CONTROL_PACKET_MAX_SIZE];
+	char rejectPkt[] = { 0,TFTP12_OPCODE_ERROR,0,TFTP12_NOT_DEFINED,"Server busy!" };
 	struct sockaddr_in peerAddr;
+	INT32 fromLen = sizeof(peerAddr);
+	INT32 recvBytes = 0;
+	HANDLE useless = NULL;
+	TFTP12ClientNode *node;
+	SOCKET rejectSock = 0;/*发送拒绝连接报文的socket*/
 
 	memset(&peerAddr, 0, sizeof(peerAddr));
 	memset(recvBuff, 0, sizeof(recvBuff));
-	memset(&tftp12ServerInfo, 0, sizeof(tftp12ServerInfo));
-	tftp12ServerInfo.defaultTimeout = TFTP12_SERVER_DEFAULT_TIMEOUT;
-	tftp12ServerInfo.reTransmitTimes = TFTP12_SERVER_DEFAULT_RETRANSMIT;
+	rejectSock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (rejectSock <= 0)
+	{
+		printf("\nServer Socket create failed!");
+		return;
+	}
+	// 	memset(&tftp12ServerInfo, 0, sizeof(tftp12ServerInfo));
+	// 	tftp12ServerInfo.serverPort = TFTP12_SERVER_DEFAULT_BIND_PORT;
+	// 	tftp12ServerInfo.defaultTimeout = TFTP12_SERVER_DEFAULT_TIMEOUT;
+	// 	tftp12ServerInfo.reTransmitTimes = TFTP12_SERVER_DEFAULT_RETRANSMIT;
 	tftp12ServerInfo.sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (tftp12ServerInfo.sock < 0)
 	{
@@ -427,7 +623,7 @@ void tftp12ServerMainTask(void *arg)
 		return;
 	}
 	tftp12ServerInfo.serverAddr.sin_addr.S_un.S_addr = htons(INADDR_ANY);
-	tftp12ServerInfo.serverAddr.sin_port = htons(TFTP12_SERVER_DEFAULT_BIND_PORT);
+	tftp12ServerInfo.serverAddr.sin_port = htons(tftp12ServerInfo.serverPort);
 	tftp12ServerInfo.serverAddr.sin_family = AF_INET;
 	if (bind(tftp12ServerInfo.sock, \
 		(struct sockaddr*)&tftp12ServerInfo.serverAddr, \
@@ -438,10 +634,7 @@ void tftp12ServerMainTask(void *arg)
 	}
 	printf("\nserver start!");
 
-	INT32 fromLen = sizeof(peerAddr);
-	INT32 recvBytes = 0;
-	HANDLE useless = NULL;
-	TFTP12ClientNode *node;
+
 	while (1)
 	{
 		recvBytes = recvfrom(tftp12ServerInfo.sock, recvBuff, TFTP12_CONTROL_PACKET_MAX_SIZE, \
@@ -455,6 +648,13 @@ void tftp12ServerMainTask(void *arg)
 		if (TFTP12_GET_OPCODE(recvBuff) != TFTP12_OPCODE_READ_REQUEST\
 			&&TFTP12_GET_OPCODE(recvBuff) != TFTP12_OPCODE_WRITE_REQUEST)
 		{
+			continue;
+		}
+
+		/*如果大于了最大用户数量，不在允许新的连接*/
+		if (tftp12ServerInfo.clientList.count >= tftp12ServerInfo.maxUser)
+		{
+			sendto(rejectSock, rejectPkt, sizeof(rejectPkt), 0, (struct sockaddr*)&peerAddr, sizeof(peerAddr));
 			continue;
 		}
 		recvBuff[recvBytes] = '\0';
@@ -477,6 +677,7 @@ void tftp12ServerMainTask(void *arg)
 
 		tftp12ParseREQPkt(&(node->clientDesc));
 		useless = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)tftp12ServerServoTask, (LPVOID)node, 0, NULL);
+		tftp12ServerInfo.clientList.count++;
 		printf("\ncreate servo task");
 		CloseHandle(useless);
 	}
@@ -484,6 +685,7 @@ void tftp12ServerMainTask(void *arg)
 
 INT32 tftp12ServerEnable()
 {
+	tftp12ServerInfo.tftpServerIsRunning = TRUE;
 	HANDLE useless = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)tftp12ServerMainTask, NULL, 0, NULL);
 	CloseHandle(useless);
 	return TRUE;

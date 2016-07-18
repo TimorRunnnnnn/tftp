@@ -9,7 +9,7 @@
 #define TFTP12_CONTROL_PACKET_MAX_SIZE	(512)
 #define TFTP12_BUFFER_SIZE(desc)		(((TFTP12Description *)desc)->option.blockSize+1)
 #define TFTP12_GET_OPCODE(buf)			(htons(*(INT16*)buf))
-#define TFTP12_GET_BLOCKNUM(buf)		htons((*(INT16*)(buf+2)))
+#define TFTP12_GET_BLOCKNUM(buf)		htons((*(UINT16*)(buf+2)))
 #define TFTP12_GET_ERRORCODE(buf)		TFTP12_GET_BLOCKNUM(buf)
 
 #define TFTP12_BLOCKSIZE_MAX		(65464)
@@ -20,6 +20,7 @@
 
 #define TFTP12_NUMBER_OF_OPTIONS	(3)
 
+#define UNUSED(d)					d
 
 enum TFTP12_ReadOrWrite {
 	TFTP12_READ=1,

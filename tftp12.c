@@ -95,19 +95,19 @@ INT32 test()
 {
 // 	TFTP12Description testDesc;
 // // 
-// // 	FILE *fd = fopen("test.txt", "w+");
-// // 	char a[20];
-// // 	for (INT32 i = 0; i < (1000000 / 500); i++)
-// // 	{
-// // 		for (int j = 0; j < 500; j++)
-// // 		{
-// // 			// 			_itoa(i, a, 10);
-// // 			// 			fwrite(a, strlen(a), 1, fd);
-// // 			fprintf(fd, "1", i % 10);
-// // 		}
-// // 	}
-// // //	fprintf(fd, "123456");
-// // 	fclose(fd);
+	FILE *fd = fopen("test.txt", "wb+");
+	char a[20];
+	for (INT32 i = 0; i < (1000000 / 500); i++)
+	{
+		for (int j = 0; j < 500; j++)
+		{
+			// 			_itoa(i, a, 10);
+			// 			fwrite(a, strlen(a), 1, fd);
+			fprintf(fd, "1");
+		}
+	}
+//	fprintf(fd, "123456");
+	fclose(fd);
 // 
 // 
 // 	memset(&testDesc, 0, sizeof(testDesc));
@@ -124,16 +124,17 @@ INT32 test()
 // 
 // 	FILE *tFile = fopen("test.txt", "r");
 // 
-// // 	char *rea = malloc(5000000);
-// // 	INT32 x = fread(rea, 1, 5000000, tFile);
-// // 	for (INT32 i=0;i<x;i++)
-// // 	{
-// // 		if (rea[i]!='1')
-// // 		{
-// // 			printf("error");
-// // 		}
-// // 	}
-// 
+// 	char *rea = malloc(5000000);
+// 	INT32 x = fread(rea, 1, 5000000, tFile);
+// 	for (INT32 i=0;i<x;i++)
+// 	{
+// 		if (rea[i]!='1')
+// 		{
+// 			printf("error");
+// 		}
+// 	}
+
+
 // 	FILE *wFile = fopen("test_copy.txt", "w+");
 // #define BLKSIZE 500
 // 
@@ -193,6 +194,6 @@ INT32 test()
 	//tftp12ExtractOption(testDesc.sendBuffer, 512, &testDesc.option);
 	// 	tftp12ExtractOption("timeout\0123\0blksize\01x34\0tsize\0111\0", &testDesc.option);
 	// 	tftp12ExtractOption("blksize\01234\0timeout\0123\0tsize\0111\0", &testDesc.option);
-//	return 1;
+	return 1;
 }
 

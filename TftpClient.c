@@ -10,7 +10,7 @@
 #include "tftpclient.h"
 #include "tftp12packet.h"
 #include "tftp12header.h"
-
+#include "tftp12Server.h"
 static inline tftp12() {
 
 }
@@ -37,23 +37,28 @@ int main()
 	tftp12LogInit();
 	tftp12ClientLogMsg("testlog:%d...%d.%s;", 123,123222, "testStr");
 	extern INT32 tftp12ServerEnable();
+	extern void tftp12ServerShowStatus(void);
+	tftp12ServerInit();
 	tftp12ServerEnable();
 	//extern void testtrans();
  	//testtrans();
-// 	test();
+ 	//test();
 
-	char input[10];
+	char input[512];
+	INT32 pos = 0;
 	while (1)
 	{
-		scanf_s("%s", input, 10);
-		if (strcmp(input, "send") == 0)
+		input[pos] = _getch();
+		tftp12ServerShowStatus();
+		printf("%c",input[pos]);
+		if (input[pos]=='\r')
 		{
-			//send
+			pos = 0;
+			
+			//tftp12ParseCommand(input);
+			printf("\n");
 		}
-		else if (strcmp(input, "put") == 0)
-		{
-			//put
-		}
+		pos++;
 	}
 
     return 0;
