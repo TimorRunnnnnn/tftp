@@ -9,55 +9,6 @@
 
 #include "tftp12header.h"
 
-
-//extern const char *tftp12ConstStrTransMode[2];
-
-// 
-// void testtrans()
-// {
-// 	srand((UINT32)time(0));
-// 
-// 
-// 	TFTP12Description test;
-// 
-// 
-// 	struct sockaddr_in localAddr;
-// 
-// 	memset(&test, 0, sizeof(test));
-// 	memset(&localAddr, 0, sizeof(localAddr));
-// 
-// 	test.filename = "test.txt";
-// 	test.sock = socket(AF_INET, SOCK_DGRAM, 0);
-// 	test.localPort = rand() % 30000 + 30000;
-// 
-// 	localAddr.sin_family = AF_INET;
-// 	localAddr.sin_addr.S_un.S_addr = htonl(ADDR_ANY);
-// 	localAddr.sin_port = htons(test.localPort);
-// 
-// 	test.peerAddr.sin_addr.S_un.S_addr = inet_addr("192.168.139.128");
-// 	test.peerAddr.sin_port = htons(69);
-// 	test.peerAddr.sin_family = AF_INET;
-// 	while (bind(test.sock, (struct sockaddr*)&localAddr, sizeof(localAddr)) != 0)
-// 	{
-// 		test.localPort = rand() % 30000 + 30000;
-// 		localAddr.sin_port = htons(test.localPort);
-// 	}
-// 
-// 	test.mode = tftp12ConstStrTransMode[1];
-// 	test.option.blockSize = 1024;
-// 	test.option.timeout = 1;
-// 	test.option.tsize = 10000;
-// 	test.writeOrRead = TFTP12_OPCODE_WRITE_REQUEST;
-// 	test.maxRetransmit = 5;
-// 
-// 	INT32 sendSize = tftp12CreateREQPkt(&test);
-// 	INT32 recvSize = 0;
-// 	static char recvbuf[600000];
-// 	test.recvBuffer = recvbuf;
-// //	tftp12SendAndRecv(&test, sendSize,&recvSize, FALSE);
-// }
-
-
 /*****************************************************************
 * DESCRIPTION:
 *	发送和接收一个字节,需要提前在desc->sendBuffer内填充发送报文

@@ -2,7 +2,7 @@
 #include "stdlib.h"
 #include "tftp12header.h"
 #include "tftp12IObuffer.h"
-#include "tftp12Server.h"
+
 
 #include "windows.h"
 
@@ -17,9 +17,6 @@ typedef struct _iobuffnode
 	enum TFTP12_ReadOrWrite rwFlag;
 	INT32 firstRun;
 	INT32 IOtaskIsRunning;
-
-	INT32 totalTransBytes;
-	
 	INT32 bufferSize;
 	char *nextPosition;
 	char *currentReadBuffer;
@@ -38,12 +35,12 @@ static void tftp12IOBufferRequest(INT32 id);
 
 static void tftp12IOListInsert(TFTP12IOBufferNode_t *node)
 {
+	TFTP12IOBufferNode_t *pWalk = head;
 	if (head == NULL)
 	{
 		head = node;
 		return;
 	}
-	TFTP12IOBufferNode_t *pWalk = head;
 	while (pWalk->next != NULL)
 	{
 		pWalk = pWalk->next;
@@ -87,8 +84,8 @@ static TFTP12IOBufferNode_t *tftp12FindNodeByid(INT32 id)
 }
 
 static void tftp12WaitIOFinish(TFTP12IOBufferNode_t *node)
-{			/*sleep太弱智，需要换*/
-	if (node->IOtaskIsRunning == TRUE)
+{	/*sleep太弱智，需要换*/
+	while (node->IOtaskIsRunning == TRUE)
 	{
 		Sleep(5);
 	}
@@ -97,7 +94,7 @@ static void tftp12WaitIOFinish(TFTP12IOBufferNode_t *node)
 void tftp12WaitIOFinishById(INT32 id)
 {
 	TFTP12IOBufferNode_t *node = tftp12FindNodeByid(id);
-	if (node==NULL)
+	if (node == NULL)
 	{
 		return;
 	}
@@ -124,7 +121,7 @@ char *tftp12ReadNextBlock(INT32 id, INT32 *size)
 		node->IOtaskIsRunning = TRUE;
 		tftp12IOBufferRequest(node->id);
 	}
-	 diff = node->fileEndPosition - node->currentReadBuffer;
+	diff = node->fileEndPosition - node->currentReadBuffer;
 
 	/*这种情况属于文件末尾不在buffer的开头*/
 	if (node->nextPosition == node->fileEndPosition)
@@ -184,7 +181,7 @@ char *tftp12WriteNextBlock(INT32 id, char *buf, INT32 writeSize)
 	TFTP12IOBufferNode_t *node = tftp12FindNodeByid(id);
 	if (node == NULL)
 	{
-		return FALSE;
+		return NULL;
 	}
 
 	/*用保存的数据填充被tftp报文头破坏的上一片的4个字节*/
@@ -196,59 +193,34 @@ char *tftp12WriteNextBlock(INT32 id, char *buf, INT32 writeSize)
 	if (writeSize > node->blockSize)
 	{
 		/*正常情况下不可能出现这个*/
-		system("pause");
-		return FALSE;
+		//system("pause");
+		return NULL;
 	}
 
 	/*如果小于块大小，说明包括了文件结尾*/
 	if (writeSize < node->blockSize)
 	{
-		printf("\nrecevie final pkt:%d",writeSize);
+		printf("\nrecevie final pkt:%d", writeSize);
 		node->endOfFile = TRUE;
 		node->fileEndPosition = node->nextPosition + writeSize;
 	}
-	//memcpy(node->nextPosition, buf, writeSize);
 	node->nextPosition += writeSize;
 
-	/*
-	if (node->endOfFile == TRUE)
+	if ((node->nextPosition == (node->currentWriteBuffer + node->bufferSize)) || (node->endOfFile == TRUE))
 	{
-	tftp12IOBufferRequest(id);
-	}
-	else*/ if ((node->nextPosition == (node->currentWriteBuffer + node->bufferSize)) || (node->endOfFile == TRUE))
-	{
-		/*如果不是第一次写满buffer，就必须等待io结束第一次运行不需要，因为第二个buffer是空的*/
-		// 			if (node->firstRun == FALSE)
-		// 			{
+
 		tftp12WaitIOFinish(node);
 		node->IOtaskIsRunning = TRUE;
-		//}
-		// 			for (INT32 i = 0; i < node->bufferSize; i++)
-		// 			{
-		// 				if (*(node->currentWriteBuffer+i)!='1')
-		// 				{
-		// 					printf("%c", *(node->currentWriteBuffer + i));
-		// 				}
-		// 			}
-
 		char *tem = node->currentReadBuffer;
 		node->currentReadBuffer = node->currentWriteBuffer;
 		node->currentWriteBuffer = tem;
 		node->nextPosition = node->currentWriteBuffer;
-		// 			if (node->firstRun == TRUE)
-		// 			{
-		// 				node->firstRun = FALSE;
-		// 			}
-		// 			else
-		// 			{
 		tftp12IOBufferRequest(id);
-		//}
 	}
 	else if (node->nextPosition > (node->currentWriteBuffer + node->bufferSize))
 	{
 		/*下个位置大于了buffer的末尾，正常情况下不可能出现这种情况*/
-		system("pause");
-		//return FALSE;
+		//system("pause");
 	}
 
 	/*保存上一片数据的后四个字节，给下一个数据报文头部留出空间*/
@@ -259,7 +231,6 @@ char *tftp12WriteNextBlock(INT32 id, char *buf, INT32 writeSize)
 
 	/*因为read和writebuffer都在申请内存的时候多留出来了4个字节，所以不会越界S*/
 	return (node->nextPosition - 4);
-	//return TRUE;
 }
 
 INT32 testNum = 0, testNum2 = 0;;
@@ -270,19 +241,17 @@ static  void *  WINAPI tftp12IObufferHandleTask(void *arg)
 	INT32 realWrite = 0;
 	INT32 realRead = 0;
 	INT32 diff = 0;
+	printf("\nio s");
+	/*测试*/
 	TFTP12IOBufferNode_t *node = (TFTP12IOBufferNode_t*)arg;
-	if (node == NULL)
+	if ((node == NULL) || (node->targetFile == NULL)\
+		|| (node->endOfFile == TRUE&&node->rwFlag == TFTP12_READ))
 	{
+		printf("\nio e");
+		node->IOtaskIsRunning = FALSE;
 		return NULL;
 	}
-	if (node->endOfFile == TRUE&&node->rwFlag == TFTP12_READ)
-	{
-		return NULL;
-	}
-	if (node->targetFile==NULL)
-	{
-		return NULL;
-	}
+
 
 	if (node->rwFlag == TFTP12_READ)
 	{
@@ -292,28 +261,12 @@ static  void *  WINAPI tftp12IObufferHandleTask(void *arg)
 			node->endOfFile = TRUE;
 			node->fileEndPosition = node->currentWriteBuffer + realRead;
 		}
-
-		// 		for (INT32 i = 0; i < realRead; i++)
-		// 		{
-		// 			if (*(node->currentWriteBuffer + i) != '1')
-		// 			{
-		// 				printf("%c", *(node->currentWriteBuffer + i));
-		// 				
-		// 				erro11r++;
-		// 			}
-		// 		}
-// 		static INT32 total = 0;
-// 		total += realRead;
-// 		printf("\nread:%d,%d,total:%d", realRead, testNum, total);
-		//testNum++;
-		//ReleaseMutex(node->IOMutex);
 	}
 	else if (node->rwFlag == TFTP12_WRITE)
 	{
-		
 		diff = node->fileEndPosition - node->currentReadBuffer;
 
-		/*如果文件到了末尾，且在本次写的缓冲内*/
+		/*如果文件到了末尾，且在本次写的缓冲内,写入的数量等于相差的字节数*/
 		if ((node->endOfFile == TRUE) && (diff > 0) && (diff < node->bufferSize))
 		{
 			writeSize = diff;
@@ -323,9 +276,6 @@ static  void *  WINAPI tftp12IObufferHandleTask(void *arg)
 			writeSize = node->bufferSize;
 		}
 		realWrite = fwrite(node->currentReadBuffer, 1, writeSize, node->targetFile);
-
-		node->totalTransBytes += realWrite;
-		printf("\nwrite:%d,%d,total:%d", realWrite, testNum, node->totalTransBytes);
 		if (realWrite < writeSize)
 		{
 			printf("\n写入错误");
@@ -335,7 +285,7 @@ static  void *  WINAPI tftp12IObufferHandleTask(void *arg)
 	{
 		return NULL;
 	}
-
+	printf("\nio e");
 	node->IOtaskIsRunning = FALSE;
 	return NULL;
 }
@@ -349,6 +299,7 @@ static void tftp12IOBufferRequest(INT32 id)
 	/*在已经读取到文件末尾的时候禁止再次读取*/
 	if (node->endOfFile == TRUE&&node->rwFlag == TFTP12_READ)
 	{
+		node->IOtaskIsRunning = FALSE;
 		return;
 	}
 
@@ -356,11 +307,6 @@ static void tftp12IOBufferRequest(INT32 id)
 	{
 	}
 
-	//printf("\nrequest id=%d:%d", id, testNum);
-	//testNum++;
-
-	/*	printf("%d", WaitForSingleObject(node->IOMutex, INFINITE));*/
-	/*可能会失败，Windows下不管*/
 	HANDLE useless = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)tftp12IObufferHandleTask, node, 0, NULL);
 	if (useless == NULL)
 	{
@@ -380,8 +326,8 @@ char *tftp12IOBufferInit(INT32 id, INT32 blocksize, FILE *file, UNUSED(INT32 fil
 	char *tem = NULL;
 	char *buf = NULL;
 	INT32 bufSize = TFTP12_IO_BUFFERSIZE(blocksize);
-	TFTP12IOBufferNode_t *node=NULL;
-	buf = (char *)malloc(bufSize * 2+8);
+	TFTP12IOBufferNode_t *node = NULL;
+	buf = (char *)malloc(bufSize * 2 + 8);
 
 	if (buf == NULL)
 	{
@@ -401,14 +347,9 @@ char *tftp12IOBufferInit(INT32 id, INT32 blocksize, FILE *file, UNUSED(INT32 fil
 	node->rwFlag = rwFlag;
 	node->pFree = buf;
 	node->targetFile = file;
-
 	node->currentReadBuffer = buf + 4;
 	node->currentWriteBuffer = buf + bufSize + 8;
-	// 	node->rwStart = node->pBuf + 4;
-	// 	node->currentRead = node->rwStart;
-	// 	node->currentWrite = node->rwStart;
 
-	/*	node->IOMutex = CreateMutex(NULL, FALSE, "");*/
 	tftp12IOListInsert(node);
 
 	node->firstRun = TRUE;
@@ -436,9 +377,6 @@ char *tftp12IOBufferInit(INT32 id, INT32 blocksize, FILE *file, UNUSED(INT32 fil
 		/*如果是写磁盘，则返回writebuffer-4*/
 		return node->nextPosition - 4;
 	}
-
-
-	//return 1;
 }
 
 INT32 tftp12IOBufferFree(INT32 id)

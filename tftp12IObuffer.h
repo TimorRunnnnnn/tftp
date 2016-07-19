@@ -1,9 +1,7 @@
 #ifndef _TFTP12IOBUFFER_H
 #define _TFTP12IOBUFFER_H
 
-#define TFTP12_IO_MEMEORY_MAX		(10*1024*1024)
 
-#define TFTP12_IO_BUFFERSIZE(x)		((TFTP12_IO_MEMEORY_MAX/x)*x)
 
 #include "windows.h"
 

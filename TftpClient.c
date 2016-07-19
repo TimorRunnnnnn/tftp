@@ -34,7 +34,7 @@ int main()
 		EXIT();
 	}
 
-	tftp12LogInit();
+	//tftp12LogInit();
 	tftp12ClientLogMsg("testlog:%d...%d.%s;", 123,123222, "testStr");
 	extern INT32 tftp12ServerEnable();
 	extern void tftp12ServerShowStatus(void);
@@ -43,7 +43,8 @@ int main()
 	//extern void testtrans();
  	//testtrans();
  	//test();
-
+	extern void logtest();
+	//logtest();
 	char input[512];
 	INT32 pos = 0;
 	while (1)

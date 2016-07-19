@@ -20,7 +20,36 @@
 
 #define TFTP12_NUMBER_OF_OPTIONS	(3)
 
+#define TFTP12_IO_MEMEORY_MAX		(10*1024*1024) /*10M，IOBuffer用到的最大的缓冲区大小*/
+#define TFTP12_IO_BUFFERSIZE(x)		((TFTP12_IO_MEMEORY_MAX/x)*x)
+
 #define UNUSED(d)					d
+
+#define FREE_Z(m)	{\
+						if(m!=NULL)		\
+						{				\
+							free(m);	\
+							m=NULL;		\
+						}				\
+					}				
+
+#define FCLOSE_Z(f)	{\
+						if(f!=NULL)		\
+						{				\
+							fclose(f);	\
+							f=NULL;		\
+						}				\
+					}		
+
+#define SCLOSE_Z(s)	{\
+						if(s!=0)		\
+						{				\
+							closesocket(s);	\
+							s=0;		\
+						}				\
+					}				
+
+
 
 enum TFTP12_ReadOrWrite {
 	TFTP12_READ=1,
@@ -86,25 +115,9 @@ typedef struct
 	INT8 *recvBuffer;	//接收缓冲区
 	INT32 recvBufferSize;/*接收缓冲区的大小，在给recvBuffer赋值的时候给这个变量赋值*/
 	INT8 *dataPktBuffer;//在发送数据报文的时候用的缓冲区指针
-	//INT32 recvBytes;
 	INT8 controlPktBuffer[TFTP12_CONTROL_PACKET_MAX_SIZE];/*控制报文的缓冲区，不超过512字节*/
-
 	INT32 maxRetransmit;
 }TFTP12Description;
-
-// typedef struct _tftp12node
-// {
-// 	TFTP12Description clientInfo;
-// 	struct _tftp12node *next;
-// }TFTP12ClientNode;
-// 
-// 
-// typedef struct
-// {
-// 	INT32 count;
-// 	TFTP12ClientNode clientNode;
-// } TFTP12ClientInfoList;
-
 
 
 /******************************创建报文**********************************************/
