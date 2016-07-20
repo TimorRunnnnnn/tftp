@@ -2,7 +2,7 @@
 #include "stdlib.h"
 #include "tftp12header.h"
 #include "tftp12IObuffer.h"
-
+#include "tftp12FormatConvert.h"
 
 #include "windows.h"
 
@@ -11,9 +11,11 @@ typedef struct _iobuffnode
 {
 	INT32 id;
 	INT32 blockSize;
-	INT32 endOfFile;
-	INT32 fileSize;
+	INT32 endOfFile;				/*是否到达文件末尾的标志*/
+	INT32 fileSize;					/*文件大小*/
 	FILE *targetFile;
+	INT8 temChar;					/*netascii的临时字符*/
+	enum TFTP12_TRANS_MODE mode;	/*读写模式，octet*/
 	enum TFTP12_ReadOrWrite rwFlag;
 	INT32 firstRun;
 	INT32 IOtaskIsRunning;
@@ -21,9 +23,9 @@ typedef struct _iobuffnode
 	char *nextPosition;
 	char *currentReadBuffer;
 	char *currentWriteBuffer;
-	char *fileEndPosition;/*在缓冲区中，指向文件结束的位置*/
-	char *pFree;/*Free的时候使用这个指针*/
-	char temPktHead[4];/*用来保存写入的时候被破坏的四个字节*/
+	char *fileEndPosition;			/*在缓冲区中，指向文件结束的位置*/
+	char *pFree;					/*Free的时候使用这个指针*/
+	char temPktHead[4];				/*用来保存写入的时候被破坏的四个字节*/
 
 	struct _iobuffnode *next;
 }TFTP12IOBufferNode_t;
@@ -114,6 +116,13 @@ char *tftp12ReadNextBlock(INT32 id, INT32 *size)
 		*size = 0;
 		return NULL;
 	}
+
+	if (node->mode == TFTP12_NETASCII)
+	{
+		*size=tftp12FileToAscii(node->targetFile, node->nextPosition, node->blockSize, (&node->temChar));
+		return node->nextPosition;
+	}
+
 	if (node->firstRun == TRUE)
 	{
 		/*如果是第一次运行需要将另外一个buffer填充满*/
@@ -184,52 +193,61 @@ char *tftp12WriteNextBlock(INT32 id, char *buf, INT32 writeSize)
 		return NULL;
 	}
 
-	/*用保存的数据填充被tftp报文头破坏的上一片的4个字节*/
-	*(buf - 4) = node->temPktHead[0];
-	*(buf - 3) = node->temPktHead[1];
-	*(buf - 2) = node->temPktHead[2];
-	*(buf - 1) = node->temPktHead[3];
-
-	if (writeSize > node->blockSize)
+	/*如果是netascii模式，单独处理*/
+	if (node->mode == TFTP12_NETASCII)
 	{
-		/*正常情况下不可能出现这个*/
-		//system("pause");
-		return NULL;
+		tftp12AsciiToFile(node->targetFile, buf, writeSize, &(node->temChar), writeSize<node->blockSize);
+	}
+	else
+	{
+		/*用保存的数据填充被tftp报文头破坏的上一片的4个字节*/
+		*(buf - 4) = node->temPktHead[0];
+		*(buf - 3) = node->temPktHead[1];
+		*(buf - 2) = node->temPktHead[2];
+		*(buf - 1) = node->temPktHead[3];
+
+		if (writeSize > node->blockSize)
+		{
+			/*正常情况下不可能出现这个*/
+			//system("pause");
+			return NULL;
+		}
+
+		/*如果小于块大小，说明包括了文件结尾*/
+		if (writeSize < node->blockSize)
+		{
+			printf("\nrecevie final pkt:%d", writeSize);
+			node->endOfFile = TRUE;
+			node->fileEndPosition = node->nextPosition + writeSize;
+		}
+		node->nextPosition += writeSize;
+
+		if ((node->nextPosition == (node->currentWriteBuffer + node->bufferSize)) || (node->endOfFile == TRUE))
+		{
+
+			tftp12WaitIOFinish(node);
+			node->IOtaskIsRunning = TRUE;
+			char *tem = node->currentReadBuffer;
+			node->currentReadBuffer = node->currentWriteBuffer;
+			node->currentWriteBuffer = tem;
+			node->nextPosition = node->currentWriteBuffer;
+			tftp12IOBufferRequest(id);
+		}
+		else if (node->nextPosition > (node->currentWriteBuffer + node->bufferSize))
+		{
+			/*下个位置大于了buffer的末尾，正常情况下不可能出现这种情况*/
+			//system("pause");
+		}
+
+		/*保存上一片数据的后四个字节，给下一个数据报文头部留出空间*/
+		node->temPktHead[0] = *(node->nextPosition - 4);
+		node->temPktHead[1] = *(node->nextPosition - 3);
+		node->temPktHead[2] = *(node->nextPosition - 2);
+		node->temPktHead[3] = *(node->nextPosition - 1);
 	}
 
-	/*如果小于块大小，说明包括了文件结尾*/
-	if (writeSize < node->blockSize)
-	{
-		printf("\nrecevie final pkt:%d", writeSize);
-		node->endOfFile = TRUE;
-		node->fileEndPosition = node->nextPosition + writeSize;
-	}
-	node->nextPosition += writeSize;
-
-	if ((node->nextPosition == (node->currentWriteBuffer + node->bufferSize)) || (node->endOfFile == TRUE))
-	{
-
-		tftp12WaitIOFinish(node);
-		node->IOtaskIsRunning = TRUE;
-		char *tem = node->currentReadBuffer;
-		node->currentReadBuffer = node->currentWriteBuffer;
-		node->currentWriteBuffer = tem;
-		node->nextPosition = node->currentWriteBuffer;
-		tftp12IOBufferRequest(id);
-	}
-	else if (node->nextPosition > (node->currentWriteBuffer + node->bufferSize))
-	{
-		/*下个位置大于了buffer的末尾，正常情况下不可能出现这种情况*/
-		//system("pause");
-	}
-
-	/*保存上一片数据的后四个字节，给下一个数据报文头部留出空间*/
-	node->temPktHead[0] = *(node->nextPosition - 4);
-	node->temPktHead[1] = *(node->nextPosition - 3);
-	node->temPktHead[2] = *(node->nextPosition - 2);
-	node->temPktHead[3] = *(node->nextPosition - 1);
-
-	/*因为read和writebuffer都在申请内存的时候多留出来了4个字节，所以不会越界S*/
+	/* 因为read和writebuffer都在申请内存的时候多留出来了4个字节 *
+	 * 用netascii的时候，nextPosition不移动，没有必要做缓冲	 */
 	return (node->nextPosition - 4);
 }
 
@@ -241,8 +259,7 @@ static  void *  WINAPI tftp12IObufferHandleTask(void *arg)
 	INT32 realWrite = 0;
 	INT32 realRead = 0;
 	INT32 diff = 0;
-	printf("\nio s");
-	/*测试*/
+
 	TFTP12IOBufferNode_t *node = (TFTP12IOBufferNode_t*)arg;
 	if ((node == NULL) || (node->targetFile == NULL)\
 		|| (node->endOfFile == TRUE&&node->rwFlag == TFTP12_READ))
@@ -285,7 +302,6 @@ static  void *  WINAPI tftp12IObufferHandleTask(void *arg)
 	{
 		return NULL;
 	}
-	printf("\nio e");
 	node->IOtaskIsRunning = FALSE;
 	return NULL;
 }
@@ -317,7 +333,12 @@ static void tftp12IOBufferRequest(INT32 id)
 }
 
 /*读的时候返回数据块指针，写的时候返回recvBuffer*/
-char *tftp12IOBufferInit(INT32 id, INT32 blocksize, FILE *file, UNUSED(INT32 fileSize), enum TFTP12_ReadOrWrite rwFlag)
+char *tftp12IOBufferInit(
+	INT32 id,
+	INT32 blocksize,
+	FILE *file, UNUSED(INT32 fileSize),
+	enum TFTP12_TRANS_MODE mode,
+	enum TFTP12_ReadOrWrite rwFlag)
 {
 	/*应根据剩余内存大小和文件大小分配内存空间*/
 	//测试时用1M
@@ -349,25 +370,26 @@ char *tftp12IOBufferInit(INT32 id, INT32 blocksize, FILE *file, UNUSED(INT32 fil
 	node->targetFile = file;
 	node->currentReadBuffer = buf + 4;
 	node->currentWriteBuffer = buf + bufSize + 8;
-
+	node->mode = mode;
+	node->temChar = '\0';
 	tftp12IOListInsert(node);
-
 	node->firstRun = TRUE;
 	if (rwFlag == TFTP12_READ)
 	{
-		node->IOtaskIsRunning = TRUE;
-		tftp12IOBufferRequest(id);
-		while (node->IOtaskIsRunning == TRUE)
+		if (mode == TFTP12_OCTET)
 		{
-			Sleep(5);
+			node->IOtaskIsRunning = TRUE;
+			tftp12IOBufferRequest(id);
+			while (node->IOtaskIsRunning == TRUE)
+			{
+				Sleep(5);
+			}
+			/*交换缓冲区,因为第一次读取的数据是放在writeBuffer里面*/
+			tem = node->currentReadBuffer;
+			node->currentReadBuffer = node->currentWriteBuffer;
+			node->currentWriteBuffer = tem;
 		}
-
-		/*交换缓冲区,因为第一次读取的数据是放在writeBuffer里面*/
-		tem = node->currentReadBuffer;
-		node->currentReadBuffer = node->currentWriteBuffer;
-		node->currentWriteBuffer = tem;
 		node->nextPosition = node->currentReadBuffer;
-
 		return node->nextPosition;
 	}
 	else

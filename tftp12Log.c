@@ -167,6 +167,7 @@ static void tftp12ShowLog(FILE *logfile)
 		}
 	}
 	fseek(logfile, logFileCurrentPos, SEEK_SET);
+	free(readBuf);
 }
 
 void tftp12ShowLogClient(void)
